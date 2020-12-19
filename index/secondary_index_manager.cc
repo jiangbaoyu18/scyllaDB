@@ -90,6 +90,40 @@ void secondary_index_manager::reload() {
     for (const auto& index : _cf.schema()->all_indices()) {
         add_index(index.second);
     }
+
+    //init our mpp index info
+    sstring index_info=_cf.schema()->comment();
+    rjson::document  doc;
+    if(!doc.Parse(index_info.c_str()).HasParseError()){
+        if(doc.HasMember("use_mpp_index")&&doc["use_mpp_index"].IsBool()&&doc["use_mpp_index"].GetBool()==true){
+//            index_options_map  indexed_fields;
+//            // in scyllaDB we only need to know which fields to be indexed, and the whole index info we send to SE
+//            if(doc.HasMember("fieldsOptions")&&doc["fieldsOptions"].IsArray()){
+//                rjson::value& fields_info = doc["fieldsOptions"];
+//                size_t len=fields_info.Size();
+//                for(size_t i = 0; i < len; i++){
+//                   bool indexed=fields_info[i]["indexed"].GetBool();
+//                    std::string cass_name=fields_info[i]["cass_name"].GetString();
+//                   if(indexed){
+//                       indexed_fields.emplace(cass_name,"true");
+//                   }
+//                }
+//            }
+//            index_metadata meta_data("mpp_index",indexed_fields,index_metadata_kind::custom,index_metadata::is_local_index(false));
+//            index mpp_index("target_column_is _in_index_metadata.index_options_map",meta_data);
+
+//            auto it = _mpp_indices.begin();
+//            while (it != _mpp_indices.end()) {
+//                auto index_name = it->first;
+//                if (index_name=="mpp_index") {
+//                    it = _mpp_indices.erase(it);
+//                } else {
+//                    ++it;
+//                }
+//            }
+//            _mpp_indices.emplace("mpp_index", mpp_index);
+        }
+    }
 }
 
 void secondary_index_manager::add_index(const index_metadata& im) {
@@ -178,6 +212,9 @@ std::vector<index_metadata> secondary_index_manager::get_dependent_indices(const
 
 std::vector<index> secondary_index_manager::list_indexes() const {
     return boost::copy_range<std::vector<index>>(_indices | boost::adaptors::map_values);
+}
+std::vector<index> secondary_index_manager::list_mpp_indexes() const {
+    return boost::copy_range<std::vector<index>>(_mpp_indices | boost::adaptors::map_values);
 }
 
 bool secondary_index_manager::is_index(view_ptr view) const {

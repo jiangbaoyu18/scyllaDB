@@ -610,6 +610,25 @@ struct MultiSliceRequest {
     6: optional ConsistencyLevel consistency_level=ConsistencyLevel.ONE
 }
 
+
+// our data structure
+struct SelectColumn {
+   1: required binary name,
+   2: required binary value,
+   3: required binary type,
+   4: optional i64 timestamp,
+   5: optional i32 ttl
+}
+
+struct SelectRow {
+    1: required list<SelectColumn> columns
+}
+
+struct SelectLocallyResult {
+    1: required list<SelectRow> rows
+
+}
+
 service Cassandra {
   # auth methods
   void login(1: required AuthenticationRequest auth_request) throws (1:AuthenticationException authnx, 2:AuthorizationException authzx),
@@ -952,4 +971,17 @@ service Cassandra {
    * @deprecated This is now a no-op. Please use the CQL3 specific methods instead.
    */
   void set_cql_version(1: required string version) throws (1:InvalidRequestException ire)
+
+  /**
+   *  our interfaces
+   */
+
+  /**
+   * execute a select_by_primary_key operation locally , and returns a CqlResult containing the results.
+   */
+   SelectLocallyResult execute_select_by_primary_key(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
+    throws (1:InvalidRequestException ire,
+            2:UnavailableException ue,
+            3:TimedOutException te,
+            4:SchemaDisagreementException sde)
 }

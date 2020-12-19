@@ -23,6 +23,8 @@
 // which is totally broken.  Include those files here to avoid
 // breakage:
 #include <sys/param.h>
+#include <seastar/core/sharded.hh>
+#include "partition_slice_builder.hh"
 // end thrift workaround
 #include "Cassandra.h"
 #include <seastar/core/distributed.hh>
@@ -69,7 +71,9 @@ using namespace ::apache::thrift::async;
 using namespace  ::cassandra;
 
 using namespace thrift;
+using namespace dht;
 
+static logging::logger thlogger("thrift-handler");
 class unimplemented_exception : public std::exception {
 public:
     virtual const char* what() const throw () override { return "sorry, not implemented"; }
@@ -77,6 +81,46 @@ public:
 
 void pass_unimplemented(const thrift_fn::function<void(::apache::thrift::TDelayedException* _throw)>& exn_cob) {
     exn_cob(::apache::thrift::TDelayedException::delayException(unimplemented_exception()));
+}
+void  parse_result_set(const query::result_set& rs,cassandra::SelectLocallyResult& selectLocallyResult){
+    std::vector<query::result_set_row> rows=rs.rows();
+    for (auto&& row : rows) {
+        cassandra::SelectRow  selectRow;
+        std::unordered_map<sstring, query::non_null_data_value> cells=row.cells();
+        for (auto&& cell : cells) {
+            std::string field_name=cell.first.data();
+            auto&& type = static_cast<const data_value&>(cell.second).type();
+            std::string field_value=type->to_string(type->decompose(cell.second)).data();
+
+            cassandra::SelectColumn selectColumn;
+            selectColumn.name=field_name;
+            selectColumn.value=field_value;
+            switch (type->get_kind()) {
+                case abstract_type::kind::int32:
+                    selectColumn.type="int32";
+                    break;
+                case abstract_type::kind::long_kind:
+                    selectColumn.type="long_kind";
+                    break;
+                case abstract_type::kind::short_kind:
+                    selectColumn.type="short_kind";
+                    break;
+                case abstract_type::kind::float_kind:
+                    selectColumn.type="float_kind";
+                    break;
+                case abstract_type::kind::double_kind:
+                    selectColumn.type="double_kind";
+                    break;
+                case abstract_type::kind::bytes:
+                    selectColumn.type="bytes";
+                    break;
+                default:
+                    selectColumn.type="bytes";  // todo other data type
+            }
+            selectRow.columns.emplace_back(selectColumn);
+        }
+        selectLocallyResult.rows.emplace_back(selectRow);
+    }
 }
 
 class delayed_exception_wrapper : public ::apache::thrift::TDelayedException {
@@ -1953,6 +1997,47 @@ private:
             }
         }
         return {std::move(muts), std::move(schemas)};
+    }
+
+    // our interface implementations
+    void execute_select_by_primary_key(::std::function<void(SelectLocallyResult const &_return)> cob,
+                                       ::std::function<void(::apache::thrift::TDelayedException * _throw)> exn_cob,
+                                       const std::string &keyspace, const std::string &column_family,
+                                       const std::string &primary_key, const Compression::type compression) {
+        thlogger.debug("call execute_select_by_primary_key, keyspace:{},column_family:{},primary_key:{}", keyspace,
+                       column_family, primary_key);
+        with_exn_cob(std::move(exn_cob), [&] {
+            schema_ptr schemaPtr = this->_db.local().find_schema(keyspace, column_family);
+            token tk = get_token(*schemaPtr, partition_key::from_single_value(*schemaPtr, to_bytes(primary_key)));
+            unsigned shard_id = dht::shard_of(*schemaPtr, tk); //compute the `shard` the pk belongs to
+
+            return _db.invoke_on(shard_id, [keyspace, column_family, primary_key, cob = std::move(cob)](database &db) {
+                schema_ptr s = db.find_schema(keyspace, column_family);
+                dht::decorated_key dk = dht::decorate_key(*s, std::move(
+                        partition_key::from_single_value(*s, to_bytes(primary_key))));
+                dht::partition_range pr = dht::partition_range::make_singular(dk);
+                dht::partition_range_vector pranges;
+                pranges.emplace_back(pr);
+
+                auto cmd = query::read_command(s->id(), s->version(), partition_slice_builder(*s).build(),
+                                               query::max_result_size(std::numeric_limits<size_t>::max()),
+                                               query::row_limit(1000));
+                return do_with(std::move(cmd), std::move(pranges), std::move(cob),
+                   [&db, s](auto &cmd, auto &pranges, auto &cob) {
+                       return db.query(s, cmd, query::result_options::only_result(), pranges, nullptr,
+                                       db::no_timeout)
+                               .then([&cob, &cmd, s](std::tuple<lw_shared_ptr < query::result>,
+                                                     cache_temperature > res_temp)
+                       {
+                           auto&&[res, temp] = res_temp;
+                           query::result_set rs = query::result_set::from_raw_result(s, cmd.slice, *res);
+                           cassandra::SelectLocallyResult selectLocallyResult;
+                           parse_result_set(rs,selectLocallyResult);
+                           cob(selectLocallyResult);// return select result
+                       });
+                   });
+            });
+        });
     }
 };
 

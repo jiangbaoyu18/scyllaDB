@@ -77,12 +77,15 @@ class secondary_index_manager {
     column_family& _cf;
     /// The key of the map is the name of the index as stored in system tables.
     std::unordered_map<sstring, index> _indices;
+    //our mpp index info
+    std::unordered_map<sstring, index> _mpp_indices;
 public:
     secondary_index_manager(column_family& cf);
     void reload();
     view_ptr create_view_for_index(const index_metadata& index) const;
     std::vector<index_metadata> get_dependent_indices(const column_definition& cdef) const;
     std::vector<index> list_indexes() const;
+    std::vector<index> list_mpp_indexes() const;
     bool is_index(view_ptr) const;
     bool is_index(const schema& s) const;
     bool is_global_index(const schema& s) const;
