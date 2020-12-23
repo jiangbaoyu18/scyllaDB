@@ -32,5 +32,5 @@
 struct timeout_config;
 
 std::unique_ptr<::cassandra::CassandraCobSvIfFactory> create_handler_factory(distributed<database>& db, distributed<cql3::query_processor>& qp, auth::service&, timeout_config);
-
+void  parse_result_set(const query::result_set& rs,cassandra::SelectLocallyResult& selectLocallyResult);
 #endif /* APPS_SEASTAR_THRIFT_HANDLER_HH_ */

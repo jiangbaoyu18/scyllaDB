@@ -51,6 +51,7 @@
 #include "frozen_mutation.hh"
 #include "partition_version.hh"
 #include "Cassandra.h"
+#include "database_fwd.hh"
 
 namespace secondary_index {
 
@@ -85,8 +86,10 @@ class secondary_index_manager {
 public:
     secondary_index_manager(column_family& cf);
     void reload();
-    // called when a mutation is applied in memtable
-    void on_finished(const frozen_mutation& m, partition_entry& pe);
+    // called when a mutation is applied in memtable, send indexed fields and pk to SE if all indexed fields are in memtable
+    bool on_finished(const frozen_mutation& m, partition_entry& pe);
+    // query memtable and sstables files , then  send indexed fields and pk to SE
+    future<> query_and_send(database& db,const frozen_mutation& m);
     view_ptr create_view_for_index(const index_metadata& index) const;
     std::vector<index_metadata> get_dependent_indices(const column_definition& cdef) const;
     std::vector<index> list_indexes() const;

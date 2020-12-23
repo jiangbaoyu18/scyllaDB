@@ -415,6 +415,8 @@ private:
 
     template<typename... Args>
     void do_apply(db::rp_handle&&, Args&&... args);
+    template<typename... Args>
+    bool do_apply_with_index(db::rp_handle&&, Args&&... args);
 
     lw_shared_ptr<memtable_list> _memtables;
 
@@ -744,6 +746,7 @@ public:
     // Applies given mutation to this column family
     // The mutation is always upgraded to current schema.
     void apply(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_handle&& = {});
+    bool apply_with_index(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_handle&& = {});
     void apply(const mutation& m, db::rp_handle&& = {});
     void apply_streaming_mutation(schema_ptr, utils::UUID plan_id, const frozen_mutation&, bool fragmented);
 

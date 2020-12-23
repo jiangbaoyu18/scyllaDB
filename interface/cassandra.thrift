@@ -618,7 +618,7 @@ struct SelectColumn {
    1: required binary name,
    2: required binary value,
    3: required binary type,
-   4: optional i32 column_type,
+   4: optional binary column_type,
    5: optional i64 timestamp,
    6: optional i32 ttl
 }

@@ -56,6 +56,7 @@
 #include "cassandra_types.h"
 #include "types.hh"
 #include "thrift/server.hh"
+#include "thrift/handler.hh"
 #include "partition_slice_builder.hh"
 
 
@@ -138,131 +139,140 @@ void secondary_index_manager::reload() {
     }
 }
 
-void secondary_index_manager::on_finished(const frozen_mutation& m, partition_entry& pe){
+bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_entry& pe){
 
     std::vector<secondary_index::index> indexes=list_mpp_indexes();
-    if(indexes.size()>0){// exists mpp index
-        const schema_ptr& m_schema=_cf.schema();
-        cassandra::SelectRow parsed_row;
-        std::unordered_set<sstring> column_names_set;
+    if(indexes.size()==0){
+        return true;
+    }
+    const schema_ptr& m_schema=_cf.schema();
+    cassandra::SelectRow parsed_row;
+    std::unordered_set<sstring> column_names_set;
 
-        //1. parsing partition key
+    //1. parsing partition key
+    partition_key key=m.key();
+    uint8_t  idx=0;
+    auto type_iterator = key.get_compound_type(*m_schema)->types().begin();
+    schema::const_iterator_range_type pk_columns=m_schema->partition_key_columns();
+    for (auto&& e : key.components(*m_schema)) {
+        const column_definition& cd=pk_columns[idx];
+        const sstring& column_name=cd.name_as_text();
         cassandra::SelectColumn parsed_column;
-        partition_key key=m.key();
-        uint8_t  idx=0;
-        std::string partition_key;  // now only support single partition key
-        auto type_iterator = key.get_compound_type(*m_schema)->types().begin();
-        schema::const_iterator_range_type pk_columns=m_schema->partition_key_columns();
-        for (auto&& e : key.components(*m_schema)) {
-            const column_definition& cd=pk_columns[idx];
-            const sstring& column_name=cd.name_as_text();
+        parsed_column.name=column_name;
+        parsed_column.value=(*type_iterator)->to_string(to_bytes(e));
+        parsed_column.column_type="0"; // partition key
+        parse_type_to_string((*type_iterator),parsed_column.type);
+        parsed_row.columns.push_back(parsed_column);
+        column_names_set.insert(column_name);
 
-            parsed_column.name=column_name;
-            parsed_column.value=(*type_iterator)->to_string(to_bytes(e));
-            partition_key=parsed_column.value;
-            parsed_column.column_type=0; // partition key
-            parse_type_to_string((*type_iterator),parsed_column.type);
-            parsed_row.columns.push_back(parsed_column);
-            column_names_set.insert(column_name);
+        ++type_iterator;
+        ++idx;
+    }
 
-            ++type_iterator;
-            ++idx;
+    //2.  parsing regular columns
+    if(m_schema->clustering_key_size()==0){ // only one row in this partition
+
+        partition_version& latest_version=*pe.version();
+        mutation_partition& mp=latest_version.partition();
+        // todo considering tombstone  of delete case
+        for (const auto& re : mp.clustered_rows()) { // re is type of  `row_entry`
+            const auto& row = re.row();
+
+            row.cells().for_each_cell([&] (column_id& c_id, const atomic_cell_or_collection& cell) {
+                cassandra::SelectColumn parsed_column;
+
+                auto& column_def = (*m_schema).column_at(column_kind::regular_column, c_id);
+                const sstring& column_name=column_def.name_as_text();
+                // todo parse collection type here
+                const data_type& t=column_def.type;
+                const atomic_cell_view& acv=cell.as_atomic_cell(column_def);
+                if (acv.is_live()) {
+                    const sstring& column_value=t->to_string( acv.value().linearize());
+                    //todo acv also contains ttl timestamp info ,if we need
+
+                    parsed_column.name=column_name;
+                    parsed_column.value=column_value;
+                    parsed_column.column_type="2"; // regular column
+                    parse_type_to_string(t,parsed_column.type);
+                    parsed_row.columns.push_back(parsed_column);
+                    column_names_set.insert(column_name);
+                }
+            });
         }
+    }else{
+        // 3.todo parsing clustering key
+    }
 
-        //2.  parsing regular columns
-        bool is_first_write=true;
-        if(m_schema->clustering_key_size()==0){ // only one row in this partition
 
-            partition_version& latest_version=*pe.version();
-            mutation_partition& mp=latest_version.partition();
-            // todo considering tombstone  of delete case
-            for (const auto& re : mp.clustered_rows()) { // re is type of  `row_entry`
-                const auto& row = re.row();
+    secondary_index::index& index=indexes.front();  // we now only consider one mpp index per column family
+    const index_options_map& mpp_index_fields_info=index.metadata().options();
+    /**
+      * send indexed field data to SE after apply in memtable
+      * 1. if all indexed fields are in memtable, we parse those fields data from memtable's `mutation_partition` and send to SE, without query disk sstable files  (which implies that this row is first write ,and when first write,we should contain all indexed fields (using default value if missing))
+      * 2. if there are some indexed field not presented in memtable ,which implies that this write is a update, and we should read data from sstable files. and finally send all indexed fields data to SE
+      */
+    bool is_first_write=true;
+    for(auto& entry:  mpp_index_fields_info){
+        if(!column_names_set.contains(entry.first)){
+            is_first_write=false;
+            break;
+        }
+    }
 
-                row.cells().for_each_cell([&] (column_id& c_id, const atomic_cell_or_collection& cell) {
-                    cassandra::SelectColumn parsed_column;
-
-                    auto& column_def = (*m_schema).column_at(column_kind::regular_column, c_id);
-                    const sstring& column_name=column_def.name_as_text();
-                    // todo parse collection type here
-                    const data_type& t=column_def.type;
-                    const atomic_cell_view& acv=cell.as_atomic_cell(column_def);
-                    if (acv.is_live()) {
-                        const sstring& column_value=t->to_string( acv.value().linearize());
-                        //todo acv also contains ttl timestamp info ,if we need
-
-                        parsed_column.name=column_name;
-                        parsed_column.value=column_value;
-                        parsed_column.column_type=2; // regular column
-                        parse_type_to_string(t,parsed_column.type);
-                        parsed_row.columns.push_back(parsed_column);
-                        column_names_set.insert(column_name);
-                    }
-                });
+    if(is_first_write){
+        if(thrift::get_thrift_client().local_is_initialized()){
+            cassandra::SelectRow indexed_row;
+            for(auto& column: parsed_row.columns){
+                if(mpp_index_fields_info.contains(column.name)||column.column_type=="0"||column.column_type=="1"){// only send indexed fields and primary key to SE
+                    indexed_row.columns.push_back(column);
+                }
             }
+            thrift::thrift_client& client=thrift::get_local_thrift_client();
+            client.send_indexed_fields_to_SE(indexed_row);
         }else{
-            // 3.todo parsing clustering key
+            std::cout<<"replaying commit log: {} and thrift client has not bean initialized"<<std::endl;
+            //todo when replay commit log ,the thrift client has not bean initialized ,consider using a cache to save those data temporarily,
         }
+        return true;
+    }else{
+        return false;  // query memtable and sstables and send indexed fields later
+    }
+}
 
-        for(auto& index:list_mpp_indexes()){
-            const index_options_map& mpp_index_fields_info=index.metadata().options();
-            bool is_first_write=true;
+future<>
+secondary_index_manager::query_and_send(database& db,const frozen_mutation& m){
+    secondary_index::index& index=list_mpp_indexes().front();  // we now only consider one mpp index per column family
+    const index_options_map& mpp_index_fields_info=index.metadata().options();
+    const schema_ptr schema=_cf.schema();
+    dht::decorated_key dk = dht::decorate_key(*schema,m.key());
+    dht::partition_range_vector pranges{dht::partition_range::make_singular(dk)};
+    auto cmd = query::read_command(schema->id(), schema->version(), partition_slice_builder(*schema).build(),
+                                   query::max_result_size(std::numeric_limits<size_t>::max()),
+                                   query::row_limit(1000));
 
-           for(auto& entry:  mpp_index_fields_info){
-               if(!column_names_set.contains(entry.first)){
-                   is_first_write=false;
-                   break;
-               }
-           }
+    return do_with(std::move(cmd), std::move(pranges),std::move(mpp_index_fields_info),
+       [&db, schema](auto &cmd, auto &pranges,auto& mpp_index_fields_info) {
+           return db.query(schema, cmd, query::result_options::only_result(), pranges, nullptr, db::no_timeout)
+           .then([&cmd,schema,&mpp_index_fields_info](std::tuple<lw_shared_ptr < query::result>,cache_temperature > res_temp){
+               auto&&[res, temp] = res_temp;
+               query::result_set rs = query::result_set::from_raw_result(schema, cmd.slice, *res);
+               cassandra::SelectLocallyResult selectLocallyResult;
+               parse_result_set(rs,selectLocallyResult);//todo get column_type using  `schema->partition_key_columns(), schema->clustering_key_columns()`
 
-            /**
-              * send indexed field data to SE after apply in memtable
-              * 1. if all indexed fields are in memtable, we parse those fields data from memtable's `mutation_partition` and send to SE, without query disk sstable files  (which implies that this row is first write ,and when first write,we should contain all indexed fields (using default value if missing))
-              * 2. if there are some indexed field not presented in memtable ,which implies that this write is a update, and we should read data from sstable files. and finally send all indexed fields data to SE
-              */
-
-           if(is_first_write){
-               if(thrift::get_thrift_client().local_is_initialized()){
+               if(thrift::get_thrift_client().local_is_initialized()){// todo when replay commit log ,the thrift client has not bean initialized ,consider using a cache to save those data temporarily,
+                   thrift::thrift_client& client=thrift::get_local_thrift_client();
                    cassandra::SelectRow indexed_row;
-                   for(auto& column: parsed_row.columns){
-                       if(mpp_index_fields_info.contains(column.name)||column.column_type==0||column.column_type==1){// only send indexed fields and primary key to SE
+                   for(auto& column: selectLocallyResult.rows.front().columns){
+                       if(mpp_index_fields_info.contains(column.name)||column.column_type=="0"||column.column_type=="1"){// only send indexed fields and primary key to SE
                            indexed_row.columns.push_back(column);
                        }
                    }
-                   thrift::thrift_client& client=thrift::get_local_thrift_client();
-                   client.send_indexed_fields_to_SE(indexed_row);
-               }else{
-                   std::cout<<"replaying commit log: {} and thrift client has not bean initialized"<<std::endl;
-                   //todo when replay commit log ,the thrift client has not bean initialized ,consider using a cache to save those data temporarily
+
+                   client.send_indexed_fields_to_SE();
                }
-           }else{
-//              database& db=service::get_local_storage_proxy().get_db().local();
-//              dht::decorated_key dk = dht::decorate_key(*m_schema, std::move(
-//                       partition_key::from_single_value(*m_schema, to_bytes(partition_key))));
-//               dht::partition_range_vector pranges{dht::partition_range::make_singular(dk)};
-//               auto cmd = query::read_command(m_schema->id(), m_schema->version(), partition_slice_builder(*m_schema).build(),
-//                                              query::max_result_size(std::numeric_limits<size_t>::max()),
-//                                              query::row_limit(1000));
-//
-//               future<> f=do_with(std::move(cmd), std::move(pranges),
-//                  [&db, m_schema](auto &cmd, auto &pranges) {
-//                      return db.query(m_schema, cmd, query::result_options::only_result(), pranges, nullptr,
-//                                      db::no_timeout)
-//                              .then([&cmd,m_schema](std::tuple<lw_shared_ptr < query::result>,
-//                                      cache_temperature > res_temp){
-//                                        auto&&[res, temp] = res_temp;
-////                                        query::result_set rs = query::result_set::from_raw_result(m_schema, cmd.slice, *res);
-//                                        res->pretty_print(m_schema,cmd.slice);
-//                                        std::cout<<"parse db.query result"<<std::endl;
-//                                    });
-//                  });
-//               f.get0();
-//               std::cout<<"after db.query"<<std::endl;
-           }
-        }
-
-    }
-
+           });
+       }
+    );
 }
 
 void secondary_index_manager::add_index(const index_metadata& im) {

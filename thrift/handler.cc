@@ -96,7 +96,7 @@ void  parse_result_set(const query::result_set& rs,cassandra::SelectLocallyResul
             cassandra::SelectColumn selectColumn;
             selectColumn.name=field_name;
             selectColumn.value=field_value;
-            parse_type_to_string(type,selectColumn.type); // todo add column_type info
+            parse_type_to_string(type,selectColumn.type);
             selectRow.columns.emplace_back(selectColumn);
         }
         selectLocallyResult.rows.emplace_back(selectRow);

@@ -1510,14 +1510,29 @@ void dirty_memory_manager::start_reclaiming() noexcept {
     _should_flush.signal();
 }
 
+//future<> database::apply_in_memory(const frozen_mutation& m, schema_ptr m_schema, db::rp_handle&& h, db::timeout_clock::time_point timeout) {
+//    auto& cf = find_column_family(m.column_family_id());
+//
+//    data_listeners().on_write(m_schema, m);
+//
+//    return cf.dirty_memory_region_group().run_when_memory_available([this, &m, m_schema = std::move(m_schema), h = std::move(h), &cf]() mutable {
+//        cf.apply(m, m_schema, std::move(h));
+//    }, timeout);
+//}
 future<> database::apply_in_memory(const frozen_mutation& m, schema_ptr m_schema, db::rp_handle&& h, db::timeout_clock::time_point timeout) {
     auto& cf = find_column_family(m.column_family_id());
 
     data_listeners().on_write(m_schema, m);
 
     return cf.dirty_memory_region_group().run_when_memory_available([this, &m, m_schema = std::move(m_schema), h = std::move(h), &cf]() mutable {
-        cf.apply(m, m_schema, std::move(h));
-    }, timeout);
+        return cf.apply_with_index(m, m_schema, std::move(h));
+    }, timeout).then([&db=*this,&cf,&m](bool is_first_write){
+        if(is_first_write){// have bean send indexed fields and pk to SE  (all indexed fields are in memtable)
+            return make_ready_future<>();
+        }else{  // query memtable and sstables files , then  send all indexed fields and pk to SE
+            return cf.get_index_manager().query_and_send(db,m);
+        }
+    });
 }
 
 future<> database::apply_in_memory(const mutation& m, column_family& cf, db::rp_handle&& h, db::timeout_clock::time_point timeout) {

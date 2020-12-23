@@ -1898,6 +1898,26 @@ void table::do_apply(db::rp_handle&& h, Args&&... args) {
         _stats.estimated_write.add(lc.latency());
     }
 }
+template<typename... Args>
+bool table::do_apply_with_index(db::rp_handle&& h, Args&&... args){
+    utils::latency_counter lc;
+    _stats.writes.set_latency(lc);
+    db::replay_position rp = h;
+    check_valid_rp(rp);
+    bool is_first_write=true;
+    try {
+        is_first_write=_memtables->active_memtable().apply(std::forward<Args>(args)..., std::move(h));
+        _highest_rp = std::max(_highest_rp, rp);
+    } catch (...) {
+        _failed_counter_applies_to_memtable++;
+        throw;
+    }
+    _stats.writes.mark(lc);
+    if (lc.is_start()) {
+        _stats.estimated_write.add(lc.latency());
+    }
+    return is_first_write;
+}
 
 void
 table::apply(const mutation& m, db::rp_handle&& h) {
@@ -1907,6 +1927,10 @@ table::apply(const mutation& m, db::rp_handle&& h) {
 void
 table::apply(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_handle&& h) {
     do_apply(std::move(h), m, m_schema,*this);
+}
+bool
+table::apply_with_index(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_handle&& h) {
+    return do_apply_with_index(std::move(h), m, m_schema,*this);
 }
 
 future<>

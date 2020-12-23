@@ -748,9 +748,10 @@ memtable::apply(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_han
     });
     update(std::move(h));
 }
-void
+bool
 memtable::apply(const frozen_mutation& m, const schema_ptr& m_schema,column_family& cf, db::rp_handle&& h) {
-    with_allocator(allocator(), [this, &m, &m_schema,&cf] {
+    bool is_first_write=true;
+    with_allocator(allocator(), [this, &m, &m_schema,&cf,&is_first_write] {
         _allocating_section(*this, [&, this] {
             with_linearized_managed_bytes([&] {
                 auto& p = find_or_create_partition_slow(m.key());
@@ -760,11 +761,12 @@ memtable::apply(const frozen_mutation& m, const schema_ptr& m_schema,column_fami
                 _stats_collector.update(*m_schema, mp);
                 p.apply(*_schema, std::move(mp), *m_schema, _table_stats.memtable_app_stats);
 
-                cf.get_index_manager().on_finished(m,p);
+                is_first_write=cf.get_index_manager().on_finished(m,p);
             });
         });
     });
     update(std::move(h));
+    return is_first_write;
 }
 
 logalloc::occupancy_stats memtable::occupancy() const {
