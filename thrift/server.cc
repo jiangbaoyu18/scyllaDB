@@ -26,6 +26,7 @@
 #include <seastar/core/metrics.hh>
 #include <seastar/net/byteorder.hh>
 #include <seastar/core/scattered_message.hh>
+#include <seastar/core/reactor.hh>
 #include <seastar/core/sleep.hh>
 #include "log.hh"
 #include <thrift/server/TServer.h>
@@ -41,6 +42,7 @@
 #include <limits>
 #include <cctype>
 #include <vector>
+
 
 #ifdef THRIFT_USES_BOOST
 #include <boost/make_shared.hpp>
@@ -221,6 +223,7 @@ thrift_server::listen(socket_address addr, bool keepalive) {
     lo.reuse_address = true;
     _listeners.push_back(seastar::listen(addr, lo));
     do_accepts(_listeners.size() - 1, keepalive);
+//    std::cout<<"thrift server open on "<<this_shard_id()<<std::endl;
     return make_ready_future<>();
 }
 
@@ -318,5 +321,31 @@ thrift_stats::thrift_stats(thrift_server& server) {
         sm::make_derive("served", [&server] { return server.requests_served(); },
                         sm::description("Rate of serving Thrift requests.")),
     });
+}
+
+namespace thrift{
+thrift_client::thrift_client() {
+    _socket=std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", 9161);
+    _transport=std::make_shared<apache::thrift::transport::TFramedTransport>(_socket);
+    _protocol=std::make_shared<apache::thrift::protocol::TBinaryProtocol>(_transport);
+    _client=std::make_unique<cassandra::CassandraClient>(_protocol);
+}
+future<> thrift_client::listen() {
+    _transport->open();
+//    std::cout<<"thrift client open on "<<seastar::engine().cpu_id()<<std::endl;
+    return make_ready_future<>();
+}
+void thrift_client::send_indexed_fields_to_SE(cassandra::SelectRow& indexed_fields){
+    _client->sendIndexedFieldsToSE(indexed_fields);
+}
+void thrift_client::send_index_info_to_SE(const std::string& index_info_json){
+    _client->sendIndexedInfoToSE(index_info_json);
+}
+future<> thrift_client::stop() {
+    _transport->close();
+    return make_ready_future<>();
+}
+
+distributed<thrift_client> _the_thrift_client;
 }
 

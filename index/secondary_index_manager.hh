@@ -48,6 +48,9 @@
 
 #include <vector>
 #include <set>
+#include "frozen_mutation.hh"
+#include "partition_version.hh"
+#include "Cassandra.h"
 
 namespace secondary_index {
 
@@ -82,6 +85,8 @@ class secondary_index_manager {
 public:
     secondary_index_manager(column_family& cf);
     void reload();
+    // called when a mutation is applied in memtable
+    void on_finished(const frozen_mutation& m, partition_entry& pe);
     view_ptr create_view_for_index(const index_metadata& index) const;
     std::vector<index_metadata> get_dependent_indices(const column_definition& cdef) const;
     std::vector<index> list_indexes() const;

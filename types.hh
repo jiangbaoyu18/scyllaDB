@@ -1188,3 +1188,33 @@ struct appending_hash<data_type> {
         feed_hash(h, v->name());
     }
 };
+
+inline
+void
+parse_type_to_string(const data_type& type,std::string& str) {
+    switch (type->get_kind()) {
+        case abstract_type::kind::int32:
+            str="int32";
+            break;
+        case abstract_type::kind::long_kind:
+            str="long_kind";
+            break;
+        case abstract_type::kind::short_kind:
+            str="short_kind";
+            break;
+        case abstract_type::kind::float_kind:
+            str="float_kind";
+            break;
+        case abstract_type::kind::double_kind:
+            str="double_kind";
+            break;
+        case abstract_type::kind::bytes:
+            str="string";
+            break;
+        case abstract_type::kind::utf8:
+            str="string";
+            break;
+        default:
+            str="bytes";  // todo other data type
+    }
+}

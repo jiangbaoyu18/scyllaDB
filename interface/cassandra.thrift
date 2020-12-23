@@ -612,12 +612,15 @@ struct MultiSliceRequest {
 
 
 // our data structure
+
+//column_type : 0-> partition_key, 1 -> clustering key, 2 -> regular column
 struct SelectColumn {
    1: required binary name,
    2: required binary value,
    3: required binary type,
-   4: optional i64 timestamp,
-   5: optional i32 ttl
+   4: optional i32 column_type,
+   5: optional i64 timestamp,
+   6: optional i32 ttl
 }
 
 struct SelectRow {
@@ -981,6 +984,23 @@ service Cassandra {
    */
    SelectLocallyResult execute_select_by_primary_key(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
     throws (1:InvalidRequestException ire,
+            2:UnavailableException ue,
+            3:TimedOutException te,
+            4:SchemaDisagreementException sde)
+
+   /**
+    * send a Row ( only contains indexed fields) to SE  , after the corresponding mutation applied to memtable
+    */
+    void sendIndexedFieldsToSE(1:required SelectRow indexedFields )
+     throws(1:InvalidRequestException ire,
+            2:UnavailableException ue,
+            3:TimedOutException te,
+            4:SchemaDisagreementException sde)
+   /**
+    * send mpp index info (using JSON ) to SE when create table or modify mpp index info
+    */
+    void sendIndexedInfoToSE(1:required binary index_info)
+     throws(1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,
             4:SchemaDisagreementException sde)

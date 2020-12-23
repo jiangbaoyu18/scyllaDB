@@ -30,6 +30,9 @@
 #include <memory>
 #include <cstdint>
 #include <boost/intrusive/list.hpp>
+#include "Cassandra.h"
+#include <thrift/transport/TSocket.h>
+#include <thrift/transport/TTransportUtils.h>
 
 class thrift_server;
 class thrift_stats;
@@ -129,5 +132,34 @@ public:
 private:
     void maybe_retry_accept(int which, bool keepalive, std::exception_ptr ex);
 };
+
+
+namespace thrift{
+
+class thrift_client{
+
+private:
+    std::shared_ptr<apache::thrift::transport::TTransport> _socket;
+    std::shared_ptr<apache::thrift::transport::TFramedTransport> _transport;
+    std::shared_ptr<apache::thrift::protocol::TProtocol> _protocol;
+    std::unique_ptr<cassandra::CassandraClient> _client;
+public:
+    thrift_client();
+    future<> listen();
+    future<> stop();
+    void send_indexed_fields_to_SE(cassandra::SelectRow& indexed_fields);
+    void send_index_info_to_SE(const std::string& index_info_json);
+
+};
+
+extern distributed<thrift_client> _the_thrift_client;
+inline distributed<thrift_client>& get_thrift_client() {
+    return _the_thrift_client;
+}
+
+inline thrift_client& get_local_thrift_client() {
+    return _the_thrift_client.local();
+}
+}
 
 #endif /* APPS_SEASTAR_THRIFT_SERVER_HH_ */

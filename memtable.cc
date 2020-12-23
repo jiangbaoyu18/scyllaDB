@@ -748,6 +748,24 @@ memtable::apply(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_han
     });
     update(std::move(h));
 }
+void
+memtable::apply(const frozen_mutation& m, const schema_ptr& m_schema,column_family& cf, db::rp_handle&& h) {
+    with_allocator(allocator(), [this, &m, &m_schema,&cf] {
+        _allocating_section(*this, [&, this] {
+            with_linearized_managed_bytes([&] {
+                auto& p = find_or_create_partition_slow(m.key());
+                mutation_partition mp(m_schema);
+                partition_builder pb(*m_schema, mp);
+                m.partition().accept(*m_schema, pb);
+                _stats_collector.update(*m_schema, mp);
+                p.apply(*_schema, std::move(mp), *m_schema, _table_stats.memtable_app_stats);
+
+                cf.get_index_manager().on_finished(m,p);
+            });
+        });
+    });
+    update(std::move(h));
+}
 
 logalloc::occupancy_stats memtable::occupancy() const {
     return logalloc::region::occupancy();

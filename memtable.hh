@@ -190,6 +190,7 @@ public:
     void apply(const mutation& m, db::rp_handle&& = {});
     // The mutation is upgraded to current schema.
     void apply(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_handle&& = {});
+    void apply(const frozen_mutation& m, const schema_ptr& m_schema,column_family& cf, db::rp_handle&& = {});
     void evict_entry(memtable_entry& e, mutation_cleaner& cleaner) noexcept;
 
     static memtable& from_region(logalloc::region& r) {

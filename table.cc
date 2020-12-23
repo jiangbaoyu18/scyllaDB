@@ -1906,7 +1906,7 @@ table::apply(const mutation& m, db::rp_handle&& h) {
 
 void
 table::apply(const frozen_mutation& m, const schema_ptr& m_schema, db::rp_handle&& h) {
-    do_apply(std::move(h), m, m_schema);
+    do_apply(std::move(h), m, m_schema,*this);
 }
 
 future<>

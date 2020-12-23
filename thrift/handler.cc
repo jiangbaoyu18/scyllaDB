@@ -56,6 +56,7 @@
 #include "query-result-reader.hh"
 #include "thrift/server.hh"
 #include "db/config.hh"
+#include "types.hh"
 
 #ifdef THRIFT_USES_BOOST
 namespace thrift_fn = tcxx;
@@ -95,28 +96,7 @@ void  parse_result_set(const query::result_set& rs,cassandra::SelectLocallyResul
             cassandra::SelectColumn selectColumn;
             selectColumn.name=field_name;
             selectColumn.value=field_value;
-            switch (type->get_kind()) {
-                case abstract_type::kind::int32:
-                    selectColumn.type="int32";
-                    break;
-                case abstract_type::kind::long_kind:
-                    selectColumn.type="long_kind";
-                    break;
-                case abstract_type::kind::short_kind:
-                    selectColumn.type="short_kind";
-                    break;
-                case abstract_type::kind::float_kind:
-                    selectColumn.type="float_kind";
-                    break;
-                case abstract_type::kind::double_kind:
-                    selectColumn.type="double_kind";
-                    break;
-                case abstract_type::kind::bytes:
-                    selectColumn.type="bytes";
-                    break;
-                default:
-                    selectColumn.type="bytes";  // todo other data type
-            }
+            parse_type_to_string(type,selectColumn.type); // todo add column_type info
             selectRow.columns.emplace_back(selectColumn);
         }
         selectLocallyResult.rows.emplace_back(selectRow);
@@ -2038,6 +2018,12 @@ private:
                    });
             });
         });
+    }
+    void sendIndexedFieldsToSE(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const SelectRow& indexedFields){
+        // implementation in SE server side
+    }
+    void sendIndexedInfoToSE(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const std::string& index_info){
+        // implementation in SE server side
     }
 };
 
