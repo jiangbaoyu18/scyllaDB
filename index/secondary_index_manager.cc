@@ -56,6 +56,7 @@
 #include "cassandra_types.h"
 #include "types.hh"
 #include "thrift/server.hh"
+#include "partition_slice_builder.hh"
 
 
 namespace secondary_index {
@@ -149,6 +150,7 @@ void secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
         cassandra::SelectColumn parsed_column;
         partition_key key=m.key();
         uint8_t  idx=0;
+        std::string partition_key;  // now only support single partition key
         auto type_iterator = key.get_compound_type(*m_schema)->types().begin();
         schema::const_iterator_range_type pk_columns=m_schema->partition_key_columns();
         for (auto&& e : key.components(*m_schema)) {
@@ -157,6 +159,7 @@ void secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
 
             parsed_column.name=column_name;
             parsed_column.value=(*type_iterator)->to_string(to_bytes(e));
+            partition_key=parsed_column.value;
             parsed_column.column_type=0; // partition key
             parse_type_to_string((*type_iterator),parsed_column.type);
             parsed_row.columns.push_back(parsed_column);
@@ -167,7 +170,7 @@ void secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
         }
 
         //2.  parsing regular columns
-
+        bool is_first_write=true;
         if(m_schema->clustering_key_size()==0){ // only one row in this partition
 
             partition_version& latest_version=*pe.version();
@@ -220,16 +223,41 @@ void secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
 
            if(is_first_write){
                if(thrift::get_thrift_client().local_is_initialized()){
+                   cassandra::SelectRow indexed_row;
+                   for(auto& column: parsed_row.columns){
+                       if(mpp_index_fields_info.contains(column.name)||column.column_type==0||column.column_type==1){// only send indexed fields and primary key to SE
+                           indexed_row.columns.push_back(column);
+                       }
+                   }
                    thrift::thrift_client& client=thrift::get_local_thrift_client();
-                   client.send_indexed_fields_to_SE(parsed_row);
+                   client.send_indexed_fields_to_SE(indexed_row);
                }else{
                    std::cout<<"replaying commit log: {} and thrift client has not bean initialized"<<std::endl;
                    //todo when replay commit log ,the thrift client has not bean initialized ,consider using a cache to save those data temporarily
                }
            }else{
-               //todo
-//                db = service::get_local_storage_proxy().get_db().local();
-
+//              database& db=service::get_local_storage_proxy().get_db().local();
+//              dht::decorated_key dk = dht::decorate_key(*m_schema, std::move(
+//                       partition_key::from_single_value(*m_schema, to_bytes(partition_key))));
+//               dht::partition_range_vector pranges{dht::partition_range::make_singular(dk)};
+//               auto cmd = query::read_command(m_schema->id(), m_schema->version(), partition_slice_builder(*m_schema).build(),
+//                                              query::max_result_size(std::numeric_limits<size_t>::max()),
+//                                              query::row_limit(1000));
+//
+//               future<> f=do_with(std::move(cmd), std::move(pranges),
+//                  [&db, m_schema](auto &cmd, auto &pranges) {
+//                      return db.query(m_schema, cmd, query::result_options::only_result(), pranges, nullptr,
+//                                      db::no_timeout)
+//                              .then([&cmd,m_schema](std::tuple<lw_shared_ptr < query::result>,
+//                                      cache_temperature > res_temp){
+//                                        auto&&[res, temp] = res_temp;
+////                                        query::result_set rs = query::result_set::from_raw_result(m_schema, cmd.slice, *res);
+//                                        res->pretty_print(m_schema,cmd.slice);
+//                                        std::cout<<"parse db.query result"<<std::endl;
+//                                    });
+//                  });
+//               f.get0();
+//               std::cout<<"after db.query"<<std::endl;
            }
         }
 
