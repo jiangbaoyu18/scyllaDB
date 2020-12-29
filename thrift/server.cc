@@ -335,8 +335,17 @@ future<> thrift_client::listen() {
 //    std::cout<<"thrift client open on "<<seastar::engine().cpu_id()<<std::endl;
     return make_ready_future<>();
 }
-void thrift_client::send_indexed_fields_to_SE(cassandra::SelectRow& indexed_fields){
-    _client->sendIndexedFieldsToSE(indexed_fields);
+void thrift_client::send_indexed_fields_to_SE(cassandra::RowData& indexed_fields){
+    bool has_indexed_fields=false;
+    for(auto& col : indexed_fields.columns){
+        if(col.column_type==0){
+            has_indexed_fields=true;
+            break;
+        }
+    }
+    if(has_indexed_fields){
+        _client->sendIndexedFieldsToSE(indexed_fields);
+    }
 }
 void thrift_client::send_index_info_to_SE(const std::string& index_info_json){
     _client->sendIndexedInfoToSE(index_info_json);

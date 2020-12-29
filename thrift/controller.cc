@@ -70,13 +70,14 @@ future<> thrift_controller::do_start_server() {
         });
     }).then([addr, port] {
         clogger.info("Thrift server listening on {}:{} ...", addr, port);
-    }).then([]{
-        return thrift::get_thrift_client().start().then([](){
-            return thrift::get_thrift_client().invoke_on_all(&thrift::thrift_client::listen).then([]{
-                clogger.info("Thrift client listening on {}:{} ...", "127.0.0.1", 9161);
-            });
-        });
     });
+//    .then([]{
+//        return thrift::get_thrift_client().start().then([](){
+//            return thrift::get_thrift_client().invoke_on_all(&thrift::thrift_client::listen).then([]{
+//                clogger.info("Thrift client listening on {}:{} ...", "127.0.0.1", 9161);
+//            });
+//        });
+//    });
 }
 
 future<> thrift_controller::stop() {

@@ -130,7 +130,7 @@ void secondary_index_manager::reload() {
             }
             _mpp_indices.emplace("mpp_index", std::move(mpp_index));
 
-            if(thrift::get_thrift_client().local_is_initialized()&&this_shard_id()==0){ // we only need send mpp index info to SE ONCE (using shard 0)
+            if(this_shard_id()==0){ // we only need send mpp index info to SE ONCE (using shard 0)
                 thrift::thrift_client& client=thrift::get_local_thrift_client();
                 client.send_index_info_to_SE(index_info);
             }
@@ -146,8 +146,11 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
         return true;
     }
     const schema_ptr& m_schema=_cf.schema();
-    cassandra::SelectRow parsed_row;
+    secondary_index::index& index=indexes.front();  // we now only consider one mpp index per column family
+    const index_options_map& mpp_index_fields_info=index.metadata().options();
+    cassandra::RowData parsed_row;
     std::unordered_set<sstring> column_names_set;
+    std::unordered_set<api::timestamp_type> indexed_column_timestamps;
 
     //1. parsing partition key
     partition_key key=m.key();
@@ -157,10 +160,10 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
     for (auto&& e : key.components(*m_schema)) {
         const column_definition& cd=pk_columns[idx];
         const sstring& column_name=cd.name_as_text();
-        cassandra::SelectColumn parsed_column;
+        cassandra::ColumnData parsed_column;
         parsed_column.name=column_name;
         parsed_column.value=(*type_iterator)->to_string(to_bytes(e));
-        parsed_column.column_type="0"; // partition key
+        parsed_column.column_type=2; // partition key
         parse_type_to_string((*type_iterator),parsed_column.type);
         parsed_row.columns.push_back(parsed_column);
         column_names_set.insert(column_name);
@@ -179,7 +182,7 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
             const auto& row = re.row();
 
             row.cells().for_each_cell([&] (column_id& c_id, const atomic_cell_or_collection& cell) {
-                cassandra::SelectColumn parsed_column;
+                cassandra::ColumnData parsed_column;
 
                 auto& column_def = (*m_schema).column_at(column_kind::regular_column, c_id);
                 const sstring& column_name=column_def.name_as_text();
@@ -188,14 +191,15 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
                 const atomic_cell_view& acv=cell.as_atomic_cell(column_def);
                 if (acv.is_live()) {
                     const sstring& column_value=t->to_string( acv.value().linearize());
-                    //todo acv also contains ttl timestamp info ,if we need
+                    //todo acv also contains ttl info ,if we need
 
                     parsed_column.name=column_name;
                     parsed_column.value=column_value;
-                    parsed_column.column_type="2"; // regular column
+                    parsed_column.column_type=0; // regular column
                     parse_type_to_string(t,parsed_column.type);
                     parsed_row.columns.push_back(parsed_column);
                     column_names_set.insert(column_name);
+                    indexed_column_timestamps.insert(acv.timestamp());
                 }
             });
         }
@@ -203,45 +207,47 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
         // 3.todo parsing clustering key
     }
 
-
-    secondary_index::index& index=indexes.front();  // we now only consider one mpp index per column family
-    const index_options_map& mpp_index_fields_info=index.metadata().options();
     /**
       * send indexed field data to SE after apply in memtable
-      * 1. if all indexed fields are in memtable, we parse those fields data from memtable's `mutation_partition` and send to SE, without query disk sstable files  (which implies that this row is first write ,and when first write,we should contain all indexed fields (using default value if missing))
-      * 2. if there are some indexed field not presented in memtable ,which implies that this write is a update, and we should read data from sstable files. and finally send all indexed fields data to SE
+      * 1. if all fields are in memtable and has the same timestamp, we parse those fields data from memtable's `mutation_partition` and send indexed fields to SE, without query disk sstable files  (which implies that this row is first write)
+      * 2. if there are some indexed field not presented in memtable or has different timestamps,which implies that this write is a update, and we should read data from sstable files. and finally send all indexed fields data to SE
       */
     bool is_first_write=true;
-    for(auto& entry:  mpp_index_fields_info){
-        if(!column_names_set.contains(entry.first)){
-            is_first_write=false;
-            break;
+    if(indexed_column_timestamps.size()>1){// fields in memtable has different timestamps ,we consider this case is not first write
+        is_first_write=false;
+    }
+    if(is_first_write){
+        for(auto& entry:  mpp_index_fields_info){
+            if(!column_names_set.contains(entry.first)){//there are some indexed fields not presented in memtable,we consider this case is not first write
+                is_first_write=false;
+                break;
+            }
         }
     }
 
     if(is_first_write){
-        if(thrift::get_thrift_client().local_is_initialized()){
-            cassandra::SelectRow indexed_row;
-            for(auto& column: parsed_row.columns){
-                if(mpp_index_fields_info.contains(column.name)||column.column_type=="0"||column.column_type=="1"){// only send indexed fields and primary key to SE
-                    indexed_row.columns.push_back(column);
-                }
+        cassandra::RowData indexed_row;
+        indexed_row.isFirstWrite=true;
+        for(auto& column: parsed_row.columns){
+            if(mpp_index_fields_info.contains(column.name)||column.column_type==1||column.column_type==2){// only send indexed fields and primary key to SE
+                indexed_row.columns.push_back(column);
             }
-            thrift::thrift_client& client=thrift::get_local_thrift_client();
-            client.send_indexed_fields_to_SE(indexed_row);
-        }else{
-            std::cout<<"replaying commit log: {} and thrift client has not bean initialized"<<std::endl;
-            //todo when replay commit log ,the thrift client has not bean initialized ,consider using a cache to save those data temporarily,
         }
+        thrift::thrift_client& client=thrift::get_local_thrift_client();
+        client.send_indexed_fields_to_SE(indexed_row);
         return true;
     }else{
-        return false;  // query memtable and sstables and send indexed fields later
+        return false;  // query memtable and sstables and send indexed fields later (using `query_and_send` method)
     }
 }
 
 future<>
 secondary_index_manager::query_and_send(database& db,const frozen_mutation& m){
-    secondary_index::index& index=list_mpp_indexes().front();  // we now only consider one mpp index per column family
+    std::vector<secondary_index::index> indexes=list_mpp_indexes();
+    if( indexes.size()==0){
+        return make_ready_future<>();
+    }
+    secondary_index::index& index=indexes.front();  // we now only consider one mpp index per column family
     const index_options_map& mpp_index_fields_info=index.metadata().options();
     const schema_ptr schema=_cf.schema();
     dht::decorated_key dk = dht::decorate_key(*schema,m.key());
@@ -256,20 +262,18 @@ secondary_index_manager::query_and_send(database& db,const frozen_mutation& m){
            .then([&cmd,schema,&mpp_index_fields_info](std::tuple<lw_shared_ptr < query::result>,cache_temperature > res_temp){
                auto&&[res, temp] = res_temp;
                query::result_set rs = query::result_set::from_raw_result(schema, cmd.slice, *res);
-               cassandra::SelectLocallyResult selectLocallyResult;
-               parse_result_set(rs,selectLocallyResult);//todo get column_type using  `schema->partition_key_columns(), schema->clustering_key_columns()`
+//               std::cout<<res->pretty_print(schema,cmd.slice)<<std::endl;
+               cassandra::SelectResult selectResult;
+               parse_result_set(schema,rs,selectResult);
 
-               if(thrift::get_thrift_client().local_is_initialized()){// todo when replay commit log ,the thrift client has not bean initialized ,consider using a cache to save those data temporarily,
-                   thrift::thrift_client& client=thrift::get_local_thrift_client();
-                   cassandra::SelectRow indexed_row;
-                   for(auto& column: selectLocallyResult.rows.front().columns){
-                       if(mpp_index_fields_info.contains(column.name)||column.column_type=="0"||column.column_type=="1"){// only send indexed fields and primary key to SE
-                           indexed_row.columns.push_back(column);
-                       }
+               thrift::thrift_client& client=thrift::get_local_thrift_client();
+               cassandra::RowData indexed_row;
+               for(auto& column: selectResult.rows.front().columns){
+                   if(mpp_index_fields_info.contains(column.name)||column.column_type==1||column.column_type==2){// only send indexed fields and primary key to SE
+                       indexed_row.columns.push_back(column);
                    }
-
-                   client.send_indexed_fields_to_SE();
                }
+               client.send_indexed_fields_to_SE(indexed_row);
            });
        }
     );

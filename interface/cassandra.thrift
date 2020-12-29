@@ -613,22 +613,23 @@ struct MultiSliceRequest {
 
 // our data structure
 
-//column_type : 0-> partition_key, 1 -> clustering key, 2 -> regular column
-struct SelectColumn {
+//column_type : 2-> partition_key, 1 -> clustering key, 0 -> regular column
+struct ColumnData {
    1: required binary name,
    2: required binary value,
    3: required binary type,
-   4: optional binary column_type,
-   5: optional i64 timestamp,
-   6: optional i32 ttl
+   4: required i32 column_type
+}
+/**
+ *  @param isFirstWrite. is used to identify when this row is first write or not
+ */
+struct RowData {
+    1: required list<ColumnData> columns,
+    2: required bool isFirstWrite=false
 }
 
-struct SelectRow {
-    1: required list<SelectColumn> columns
-}
-
-struct SelectLocallyResult {
-    1: required list<SelectRow> rows
+struct SelectResult {
+    1: required list<RowData> rows
 
 }
 
@@ -980,9 +981,9 @@ service Cassandra {
    */
 
   /**
-   * execute a select_by_primary_key operation locally , and returns a CqlResult containing the results.
+   * execute a select_by_primary_key operation locally , and returns the results.
    */
-   SelectLocallyResult execute_select_by_primary_key(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
+   SelectResult execute_select_by_primary_key(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
     throws (1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,
@@ -991,7 +992,7 @@ service Cassandra {
    /**
     * send a Row ( only contains indexed fields) to SE  , after the corresponding mutation applied to memtable
     */
-    void sendIndexedFieldsToSE(1:required SelectRow indexedFields )
+    void sendIndexedFieldsToSE(1:required RowData indexedFields )
      throws(1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,

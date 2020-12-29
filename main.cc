@@ -77,6 +77,7 @@
 #include "connection_notifier.hh"
 #include "transport/controller.hh"
 #include "thrift/controller.hh"
+#include "thrift/server.hh"
 
 #include "alternator/server.hh"
 #include "redis/service.hh"
@@ -923,6 +924,13 @@ int main(int ac, char** av) {
             auto stop_cdc_service = defer_verbose_shutdown("cdc", [] {
                 cdc.stop().get();
             });
+
+            // before init_non_system_keyspaces, init our thrift client and make ready for send data to SE
+            thrift::get_thrift_client().start().then([](){
+                return thrift::get_thrift_client().invoke_on_all(&thrift::thrift_client::listen).then([]{
+                    startlog.info("Thrift client listening on {}:{} ...", "127.0.0.1", 9161);
+                 });
+            }).get0();
 
             supervisor::notify("loading non-system sstables");
             distributed_loader::init_non_system_keyspaces(db, proxy, mm).get();
