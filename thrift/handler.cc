@@ -1106,6 +1106,9 @@ public:
         // No-op.
         cob();
     }
+     void postScyllaInitialization(::std::function<void()> cob){
+        // implementation in thrift client
+    }
 
 private:
     template<allow_prefixes IsPrefixable>

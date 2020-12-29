@@ -350,6 +350,10 @@ void thrift_client::send_indexed_fields_to_SE(cassandra::RowData& indexed_fields
 void thrift_client::send_index_info_to_SE(const std::string& index_info_json){
     _client->sendIndexedInfoToSE(index_info_json);
 }
+void thrift_client::postScyllaInitialization(){
+    _client->postScyllaInitialization();
+}
+
 future<> thrift_client::stop() {
     _transport->close();
     return make_ready_future<>();

@@ -1325,6 +1325,7 @@ int main(int ac, char** av) {
             seastar::set_abort_on_ebadf(cfg->abort_on_ebadf());
             api::set_server_done(ctx).get();
             supervisor::notify("serving");
+            thrift::get_local_thrift_client().postScyllaInitialization();// notify SE Server ,syclla finish initializaion
             // Register at_exit last, so that storage_service::drain_on_shutdown will be called first
 
             auto stop_repair = defer_verbose_shutdown("repair", [] {

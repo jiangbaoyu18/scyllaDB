@@ -1005,4 +1005,9 @@ service Cassandra {
             2:UnavailableException ue,
             3:TimedOutException te,
             4:SchemaDisagreementException sde)
+
+   /**
+    * when syclla finish initializaion ,signal SE to continue it's process
+    */
+    void postScyllaInitialization()
 }
