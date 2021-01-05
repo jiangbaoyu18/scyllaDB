@@ -1214,6 +1214,8 @@ parse_type_to_string(const data_type& type,std::string& str) {
         case abstract_type::kind::utf8:
             str="string";
             break;
+        case abstract_type::kind::timestamp:
+            str="timestamp";
         default:
             str="bytes";  // todo other data type
     }

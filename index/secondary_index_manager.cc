@@ -102,21 +102,21 @@ void secondary_index_manager::reload() {
     sstring index_info=_cf.schema()->comment();
     rjson::document  doc;
     if(!doc.Parse(index_info.c_str()).HasParseError()){
-        if(doc.HasMember("use_mpp_index")&&doc["use_mpp_index"].IsBool()&&doc["use_mpp_index"].GetBool()==true){
+        if(doc.HasMember("use_mpp_index")&&doc["use_mpp_index"].IsString()&&strcmp(doc["use_mpp_index"].GetString(),"true")==0){
             index_options_map  indexed_fields;
 //            // in scyllaDB we only need to know which fields to be indexed, and the whole index info we send to SE
-            if(doc.HasMember("fieldsOptions")&&doc["fieldsOptions"].IsArray()){
-                rjson::value& fields_info = doc["fieldsOptions"];
+            if(doc.HasMember("mapping")&&doc["mapping"].IsArray()){
+                rjson::value& fields_info = doc["mapping"];
                 size_t len=fields_info.Size();
                 for(size_t i = 0; i < len; i++){
-                   bool indexed=fields_info[i]["indexed"].GetBool();
+                   const char* indexed=fields_info[i]["indexed"].GetString();
                     std::string cass_name=fields_info[i]["cass_name"].GetString();
-                   if(indexed){
+                   if(strcmp(indexed,"true")==0){
                        indexed_fields.emplace(std::move(cass_name),"true");
                    }
                 }
             }
-            index_metadata meta_data("mpp_index",indexed_fields,index_metadata_kind::custom,index_metadata::is_local_index(false));
+            index_metadata meta_data("mpp_index",indexed_fields,index_metadata_kind::custom,index_metadata::is_local_index(true));
             index mpp_index("target_column_is _in_index_metadata.index_options_map",meta_data);
 
             auto it = _mpp_indices.begin();
