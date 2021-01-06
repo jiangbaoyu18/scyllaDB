@@ -57,6 +57,9 @@
 #include "thrift/server.hh"
 #include "db/config.hh"
 #include "types.hh"
+#include "locator/snitch_base.hh"
+#include "locator/abstract_replication_strategy.hh"
+#include "locator/network_topology_strategy.hh"
 
 #ifdef THRIFT_USES_BOOST
 namespace thrift_fn = tcxx;
@@ -1106,9 +1109,7 @@ public:
         // No-op.
         cob();
     }
-     void postScyllaInitialization(::std::function<void()> cob){
-        // implementation in thrift client
-    }
+
 
 private:
     template<allow_prefixes IsPrefixable>
@@ -2039,6 +2040,52 @@ private:
     void sendIndexedInfoToSE(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const std::string& index_info){
         // implementation in SE server side
     }
+    void postScyllaInitialization(::std::function<void()> cob){
+        // implementation in thrift client
+    }
+    void get_broadcast_address(::std::function<void(std::string const& _return)> cob){
+        auto broadcast_address = utils::fb_utilities::get_broadcast_address();
+        std::string addr=broadcast_address.to_sstring();
+        cob(addr);
+    }
+
+    void get_datacenter(::std::function<void(std::string const& _return)> cob){
+        auto broadcast_address = utils::fb_utilities::get_broadcast_address();
+        std::string dc=locator::i_endpoint_snitch::snitch_instance().local()->get_datacenter(broadcast_address);
+        cob(dc);
+    }
+
+    void get_datacenters_of(::std::function<void(Datacenters const& _return)> cob, const std::string& ks_name){
+        keyspace& ks=this->_db.local().find_keyspace(ks_name);
+        locator::abstract_replication_strategy& strategy=ks.get_replication_strategy();
+
+        if(strategy.get_type()==locator::replication_strategy_type::network_topology){
+            locator::network_topology_strategy& nw_strategy=dynamic_cast<locator::network_topology_strategy&>(strategy);
+            const std::vector<sstring>& datacenters=nw_strategy.get_datacenters();
+            std::vector<sstring> dc_list(datacenters);
+            std::sort(dc_list.begin(),dc_list.end(),std::less<std::string>());
+            Datacenters dcs;
+            size_t maxFactor = 0;
+            std::string final_dc = dc_list[0];
+            for (auto& dc : dc_list) {
+                if(nw_strategy.get_replication_factor(dc) > maxFactor) {
+                    maxFactor = nw_strategy.get_replication_factor(dc);
+                    final_dc = dc;
+                }
+                dcs.datacenters.emplace_back(dc);
+            }
+            dcs.primaryDC=final_dc;
+            cob(dcs);
+        }else{
+            Datacenters dcs;
+            auto broadcast_address = utils::fb_utilities::get_broadcast_address();
+            std::string dc=locator::i_endpoint_snitch::snitch_instance().local()->get_datacenter(broadcast_address);
+            dcs.datacenters.emplace_back(dc);
+            dcs.primaryDC="";
+            cob(dcs);
+        }
+    }
+
 };
 
 class handler_factory : public CassandraCobSvIfFactory {

@@ -633,6 +633,11 @@ struct SelectResult {
 
 }
 
+struct Datacenters {
+   1: required binary primaryDC,
+   2: required list<binary> datacenters
+}
+
 service Cassandra {
   # auth methods
   void login(1: required AuthenticationRequest auth_request) throws (1:AuthenticationException authnx, 2:AuthorizationException authzx),
@@ -977,7 +982,7 @@ service Cassandra {
   void set_cql_version(1: required string version) throws (1:InvalidRequestException ire)
 
   /**
-   *  our interfaces
+   * ******************** our interface  ********************
    */
 
   /**
@@ -1010,4 +1015,22 @@ service Cassandra {
     * when syclla finish initializaion ,signal SE to continue it's process
     */
     void postScyllaInitialization()
+
+   /**
+    * get this node's broadcast addr
+    */
+    string get_broadcast_address()
+
+   /**
+    * get the DC this  node's belong to
+    */
+    string get_datacenter()
+
+   /**
+    * Get the primary dc and dc_list of specific keyspace, which is the first element of the sorted DC list or
+    * which has maximum replication factor.
+    */
+    Datacenters get_datacenters_of(1:required string ks_name)
+
+
 }
