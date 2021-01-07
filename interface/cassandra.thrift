@@ -1032,5 +1032,19 @@ service Cassandra {
     */
     Datacenters get_datacenters_of(1:required string ks_name)
 
+   /**
+    * get InetAddresses  of a Datacenter
+    **/
+    list<string> addresses_in_dc(1:required string dc)
+
+   /**
+    * get InetAddresses of a Range<Token>
+    */
+    list<string> get_natural_endpoints(1:required string ks, 2:required i64 tk)
+
+   /**
+    * using scylla's Gossiper's knowledge of whether a node is up or down.
+    **/
+    bool is_alive(1:required string addr)
 
 }

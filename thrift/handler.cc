@@ -60,6 +60,9 @@
 #include "locator/snitch_base.hh"
 #include "locator/abstract_replication_strategy.hh"
 #include "locator/network_topology_strategy.hh"
+#include "dht/murmur3_partitioner.hh"
+#include "gms/gossiper.hh"
+
 
 #ifdef THRIFT_USES_BOOST
 namespace thrift_fn = tcxx;
@@ -2084,6 +2087,34 @@ private:
             dcs.primaryDC="";
             cob(dcs);
         }
+    }
+
+    void addresses_in_dc(::std::function<void(std::vector<std::string>  const& _return)> cob, const std::string& dc){
+        std::unordered_map<sstring, std::unordered_set<gms::inet_address>> map=service::get_local_storage_service().get_token_metadata().get_topology().get_datacenter_endpoints();
+        std::vector<std::string> addresses;
+        if(map.find(dc)==map.end()){
+            cob(addresses);
+        }else{
+            std::unordered_set<gms::inet_address> addr_set=map.find(dc)->second;
+            for(auto& addr:addr_set){
+                addresses.emplace_back(addr.to_sstring());
+            }
+            cob(addresses);
+        }
+    }
+
+    void get_natural_endpoints(::std::function<void(std::vector<std::string>  const& _return)> cob, const std::string& ks, const int64_t tk){
+        std::vector<gms::inet_address> addrs=service::get_local_storage_service().get_natural_endpoints(ks,token(dht::token_kind::key,tk));
+        std::vector<std::string> res;
+        for(auto& addr:addrs){
+            res.emplace_back(addr.to_sstring());
+        }
+        cob(res);
+    }
+
+    void is_alive(::std::function<void(bool const& _return)> cob, const std::string& addr){
+        gms::inet_address address(addr);
+        cob(gms::get_gossiper().local().is_alive(gms::inet_address(address)));
     }
 
 };
