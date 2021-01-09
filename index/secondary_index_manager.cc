@@ -132,7 +132,7 @@ void secondary_index_manager::reload() {
 
             if(this_shard_id()==0){ // we only need send mpp index info to SE ONCE (using shard 0)
                 thrift::thrift_client& client=thrift::get_local_thrift_client();
-                client.send_index_info_to_SE(index_info);
+                client.dealWithIndexInfo(index_info);
             }
 
         }
@@ -148,7 +148,9 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
     const schema_ptr& m_schema=_cf.schema();
     secondary_index::index& index=indexes.front();  // we now only consider one mpp index per column family
     const index_options_map& mpp_index_fields_info=index.metadata().options();
-    cassandra::RowData parsed_row;
+    cassandra::WriteRow parsed_row;
+    parsed_row.ks_name=m_schema->ks_name();
+    parsed_row.tbl_name=m_schema->cf_name();
     std::unordered_set<sstring> column_names_set;
     std::unordered_set<api::timestamp_type> indexed_column_timestamps;
 
@@ -164,7 +166,7 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
         parsed_column.name=column_name;
         parsed_column.value=(*type_iterator)->to_string(to_bytes(e));
         parsed_column.column_type=2; // partition key
-        parse_type_to_string((*type_iterator),parsed_column.type);
+//        parse_type_to_string((*type_iterator),parsed_column.type); //unnecessary  to send type info to SE
         parsed_row.columns.push_back(parsed_column);
         column_names_set.insert(column_name);
 
@@ -196,7 +198,7 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
                     parsed_column.name=column_name;
                     parsed_column.value=column_value;
                     parsed_column.column_type=0; // regular column
-                    parse_type_to_string(t,parsed_column.type);
+//                    parse_type_to_string(t,parsed_column.type);
                     parsed_row.columns.push_back(parsed_column);
                     column_names_set.insert(column_name);
                     indexed_column_timestamps.insert(acv.timestamp());
@@ -226,7 +228,7 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
     }
 
     if(is_first_write){
-        cassandra::RowData indexed_row;
+        cassandra::WriteRow indexed_row;
         indexed_row.isFirstWrite=true;
         for(auto& column: parsed_row.columns){
             if(mpp_index_fields_info.contains(column.name)||column.column_type==1||column.column_type==2){// only send indexed fields and primary key to SE
@@ -234,7 +236,7 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
             }
         }
         thrift::thrift_client& client=thrift::get_local_thrift_client();
-        client.send_indexed_fields_to_SE(indexed_row);
+        client.dealWithIndexedFields(indexed_row);
         return true;
     }else{
         return false;  // query memtable and sstables and send indexed fields later (using `query_and_send` method)
@@ -267,13 +269,13 @@ secondary_index_manager::query_and_send(database& db,const frozen_mutation& m){
                parse_result_set(schema,rs,selectResult);
 
                thrift::thrift_client& client=thrift::get_local_thrift_client();
-               cassandra::RowData indexed_row;
+               cassandra::WriteRow indexed_row;
                for(auto& column: selectResult.rows.front().columns){
                    if(mpp_index_fields_info.contains(column.name)||column.column_type==1||column.column_type==2){// only send indexed fields and primary key to SE
                        indexed_row.columns.push_back(column);
                    }
                }
-               client.send_indexed_fields_to_SE(indexed_row);
+               client.dealWithIndexedFields(indexed_row);
            });
        }
     );

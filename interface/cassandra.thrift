@@ -617,20 +617,23 @@ struct MultiSliceRequest {
 struct ColumnData {
    1: required binary name,
    2: required binary value,
-   3: required binary type,
-   4: required i32 column_type
+   3: required i32 column_type
 }
 /**
  *  @param isFirstWrite. is used to identify when this row is first write or not
  */
-struct RowData {
+struct WriteRow {
     1: required list<ColumnData> columns,
-    2: required bool isFirstWrite=false
+    2: required bool isFirstWrite=false,
+    3: required string ks_name,
+    4: required string tbl_name
+}
+struct ReadRow {
+    1: required list<ColumnData> columns
 }
 
 struct SelectResult {
-    1: required list<RowData> rows
-
+    1: required list<ReadRow> rows
 }
 
 struct Datacenters {
@@ -986,9 +989,9 @@ service Cassandra {
    */
 
   /**
-   * execute a select_by_primary_key operation locally , and returns the results.
+   * execute a query in local node , and returns the results.
    */
-   SelectResult execute_select_by_primary_key(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
+   SelectResult readFullRow(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
     throws (1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,
@@ -997,7 +1000,7 @@ service Cassandra {
    /**
     * send a Row ( only contains indexed fields) to SE  , after the corresponding mutation applied to memtable
     */
-    void sendIndexedFieldsToSE(1:required RowData indexedFields )
+    void dealWithIndexedFields(1:required WriteRow indexedFields )
      throws(1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,
@@ -1005,7 +1008,7 @@ service Cassandra {
    /**
     * send mpp index info (using JSON ) to SE when create table or modify mpp index info
     */
-    void sendIndexedInfoToSE(1:required binary index_info)
+    void dealWithIndexInfo(1:required binary index_info)
      throws(1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,

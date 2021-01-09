@@ -147,8 +147,8 @@ public:
     thrift_client();
     future<> listen();
     future<> stop();
-    void send_indexed_fields_to_SE(cassandra::RowData& indexed_fields);
-    void send_index_info_to_SE(const std::string& index_info_json);
+    void dealWithIndexedFields(cassandra::WriteRow& indexed_fields);
+    void dealWithIndexInfo(const std::string& index_info_json);
     void postScyllaInitialization();
 
 };

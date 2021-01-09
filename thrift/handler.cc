@@ -102,7 +102,7 @@ void  parse_result_set(schema_ptr s,const query::result_set& rs,cassandra::Selec
     }
 
     for (auto&& row : rows) {
-        cassandra::RowData  selectRow;
+        cassandra::ReadRow  selectRow;
         std::unordered_map<sstring, query::non_null_data_value> cells=row.cells();
         for (auto&& cell : cells) {
             std::string field_name=cell.first.data();
@@ -113,7 +113,7 @@ void  parse_result_set(schema_ptr s,const query::result_set& rs,cassandra::Selec
             column.name=field_name;
             column.value=field_value;
             column.column_type=pk_names_set.contains(field_name)?2:ck_names_set.contains(field_name)?1:0; //2:pk,1:ck, 0: regular column
-            parse_type_to_string(type,column.type);
+//            parse_type_to_string(type,column.type);// //unnecessary  send type info to SE
             selectRow.columns.emplace_back(column);
         }
         selectResult.rows.emplace_back(selectRow);
@@ -1998,7 +1998,7 @@ private:
     }
 
     // our interface implementations
-    void execute_select_by_primary_key(::std::function<void(SelectResult const &_return)> cob,
+    void readFullRow(::std::function<void(SelectResult const &_return)> cob,
                                        ::std::function<void(::apache::thrift::TDelayedException * _throw)> exn_cob,
                                        const std::string &keyspace, const std::string &column_family,
                                        const std::string &primary_key, const Compression::type compression) {
@@ -2037,12 +2037,10 @@ private:
             });
         });
     }
-    void sendIndexedFieldsToSE(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const RowData& indexedFields){
-        // implementation in SE server side
-    }
-    void sendIndexedInfoToSE(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const std::string& index_info){
-        // implementation in SE server side
-    }
+
+    void dealWithIndexedFields(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const WriteRow& indexedFields){}
+    void dealWithIndexInfo(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> /* exn_cob */, const std::string& index_info){}
+
     void postScyllaInitialization(::std::function<void()> cob){
         // implementation in thrift client
     }
@@ -2113,8 +2111,7 @@ private:
     }
 
     void is_alive(::std::function<void(bool const& _return)> cob, const std::string& addr){
-        gms::inet_address address(addr);
-        cob(gms::get_gossiper().local().is_alive(gms::inet_address(address)));
+        cob(gms::get_gossiper().local().is_alive(gms::inet_address(addr)));
     }
 
 };
