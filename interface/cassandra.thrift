@@ -997,6 +997,16 @@ service Cassandra {
             3:TimedOutException te,
             4:SchemaDisagreementException sde)
 
+
+  /**
+   *  scan a partition range  of rows ,used by dv fields batch update to lucene
+   */
+   SelectResult get_range_slices_locally(1:required binary keyspace, 2:required binary column_family, 3:required binary start_tk,4:required binary end_tk)
+    throws (1:InvalidRequestException ire,
+            2:UnavailableException ue,
+            3:TimedOutException te,
+            4:SchemaDisagreementException sde)
+
    /**
     * send a Row ( only contains indexed fields) to SE  , after the corresponding mutation applied to memtable
     */

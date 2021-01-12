@@ -62,6 +62,7 @@
 #include "locator/network_topology_strategy.hh"
 #include "dht/murmur3_partitioner.hh"
 #include "gms/gossiper.hh"
+#include "multishard_mutation_query.hh"
 
 
 #ifdef THRIFT_USES_BOOST
@@ -2018,8 +2019,7 @@ private:
                 pranges.emplace_back(pr);
 
                 auto cmd = query::read_command(s->id(), s->version(), partition_slice_builder(*s).build(),
-                                               query::max_result_size(std::numeric_limits<size_t>::max()),
-                                               query::row_limit(1000));
+                                               query::max_result_size(std::numeric_limits<size_t>::max()));
                 return do_with(std::move(cmd), std::move(pranges), std::move(cob),
                    [&db, s](auto &cmd, auto &pranges, auto &cob) {
                        return db.query(s, cmd, query::result_options::only_result(), pranges, nullptr,
@@ -2034,6 +2034,34 @@ private:
                            cob(selectResult);// return select result
                        });
                    });
+            });
+        });
+    }
+
+    void get_range_slices_locally(::std::function<void(SelectResult const& _return)> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> exn_cob , const std::string& keyspace, const std::string& column_family, const std::string& start_tk, const std::string& end_tk){
+        with_exn_cob(std::move(exn_cob), [&] {
+            schema_ptr schemaPtr = this->_db.local().find_schema(keyspace, column_family);
+            auto cmd = query::read_command(schemaPtr->id(), schemaPtr->version(), partition_slice_builder(*schemaPtr).build(), query::max_result_size(std::numeric_limits<size_t>::max()));
+            auto start = dht::ring_position::ending_at(dht::token::from_sstring(sstring(start_tk)));
+            auto end = dht::ring_position::ending_at(dht::token::from_sstring(sstring(end_tk)));
+            dht::partition_range_vector pranges{{dht::partition_range::bound(std::move(start), false),
+                                                        dht::partition_range::bound(std::move(end), true)}};
+
+            return do_with(std::move(cmd),std::move(pranges),std::move(cob),[this,schemaPtr](auto &cmd,auto& pranges,auto& cob){
+                tracing::trace_state_ptr trace_state_ptr;
+                auto timeout = db::no_timeout;
+                return query_mutations_on_all_shards(_db,schemaPtr,cmd,pranges,trace_state_ptr,timeout).then([schemaPtr,&cmd,&cob](std::tuple<foreign_ptr<lw_shared_ptr<reconcilable_result>>, cache_temperature> t){
+
+                    auto&& [r, ht] = t;
+                    query::result_options opts;
+                    opts.request =query::result_request::only_result;
+                    query::result res=to_data_query_result(*r,schemaPtr,cmd.slice, cmd.get_row_limit(), cmd.partition_limit,opts);
+
+                    query::result_set rs = query::result_set::from_raw_result(schemaPtr, cmd.slice, res);
+                    cassandra::SelectResult selectResult;
+                    parse_result_set(schemaPtr,rs,selectResult);
+                    cob(selectResult);// return select result
+                });
             });
         });
     }
