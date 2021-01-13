@@ -1008,6 +1008,24 @@ service Cassandra {
             4:SchemaDisagreementException sde)
 
    /**
+    * get the row count of a partition range
+    */
+    i64 token_range_row_count(1:required binary keyspace, 2:required binary column_family, 3:required binary start_tk,4:required binary end_tk)
+     throws (1:InvalidRequestException ire,
+            2:UnavailableException ue,
+            3:TimedOutException te,
+            4:SchemaDisagreementException sde)
+
+    /**
+     * truncate local column family
+     */
+     void truncate_local_cf(1:required binary keyspace, 2:required binary column_family)
+      throws (1:InvalidRequestException ire,
+              2:UnavailableException ue,
+              3:TimedOutException te,
+              4:SchemaDisagreementException sde)
+
+   /**
     * send a Row ( only contains indexed fields) to SE  , after the corresponding mutation applied to memtable
     */
     void dealWithIndexedFields(1:required WriteRow indexedFields )

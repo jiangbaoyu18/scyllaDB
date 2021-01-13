@@ -63,6 +63,7 @@
 #include "dht/murmur3_partitioner.hh"
 #include "gms/gossiper.hh"
 #include "multishard_mutation_query.hh"
+#include "utils/joinpoint.hh"
 
 
 #ifdef THRIFT_USES_BOOST
@@ -2063,6 +2064,40 @@ private:
                     cob(selectResult);// return select result
                 });
             });
+        });
+    }
+
+    void token_range_row_count(::std::function<void(int64_t const& _return)> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)>  exn_cob , const std::string& keyspace, const std::string& column_family, const std::string& start_tk, const std::string& end_tk){
+        with_exn_cob(std::move(exn_cob), [&] {
+            schema_ptr schemaPtr = this->_db.local().find_schema(keyspace, column_family);
+            auto cmd = query::read_command(schemaPtr->id(), schemaPtr->version(), partition_slice_builder(*schemaPtr).build(), query::max_result_size(std::numeric_limits<size_t>::max()));
+            auto start = dht::ring_position::ending_at(dht::token::from_sstring(sstring(start_tk)));
+            auto end = dht::ring_position::ending_at(dht::token::from_sstring(sstring(end_tk)));
+            dht::partition_range_vector pranges{{dht::partition_range::bound(std::move(start), false),
+                                                        dht::partition_range::bound(std::move(end), true)}};
+
+            return do_with(std::move(cmd),std::move(pranges),std::move(cob),[this,schemaPtr](auto &cmd,auto& pranges,auto& cob){
+                tracing::trace_state_ptr trace_state_ptr;
+                auto timeout = db::no_timeout;
+                return query_mutations_on_all_shards(_db,schemaPtr,cmd,pranges,trace_state_ptr,timeout).then([schemaPtr,&cmd,&cob](std::tuple<foreign_ptr<lw_shared_ptr<reconcilable_result>>, cache_temperature> t){
+                    auto&& [r, ht] = t;
+                    query::result_options opts;
+                    opts.request =query::result_request::only_result;
+                    query::result res=to_data_query_result(*r,schemaPtr,cmd.slice, cmd.get_row_limit(), cmd.partition_limit,opts);
+                    uint64_t count= res.row_count().value();
+                    cob(count);
+                });
+            });
+        });
+    }
+    void truncate_local_cf(::std::function<void()> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> exn_cob , const std::string& keyspace, const std::string& column_family){
+        with_cob(std::move(cob), std::move(exn_cob), [&] {
+            return do_with(utils::make_joinpoint([] { return db_clock::now();}),
+               [keyspace, column_family](auto& tsf) {
+                   return service::get_storage_proxy().invoke_on_all( [keyspace, column_family, &tsf](service::storage_proxy& sp) {
+                       return sp.get_db().local().truncate(keyspace, column_family, [&tsf] { return tsf.value(); });
+                   });
+               });
         });
     }
 
