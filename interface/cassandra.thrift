@@ -989,13 +989,22 @@ service Cassandra {
    */
 
   /**
-   * execute a query in local node , and returns the results.
+   * execute a query in local node , and returns all cols of a row
    */
    SelectResult readFullRow(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:required Compression compression)
     throws (1:InvalidRequestException ire,
             2:UnavailableException ue,
             3:TimedOutException te,
             4:SchemaDisagreementException sde)
+
+   /**
+    * execute a query in local node , and returns the  specific cols of a row
+    */
+     SelectResult readSpecCols(1:required binary keyspace, 2:required binary column_family, 3:required binary primary_key, 4:list<binary> col_names)
+       throws (1:InvalidRequestException ire,
+               2:UnavailableException ue,
+               3:TimedOutException te,
+               4:SchemaDisagreementException sde)
 
 
   /**

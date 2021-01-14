@@ -2039,6 +2039,50 @@ private:
         });
     }
 
+    void readSpecCols(::std::function<void(SelectResult const& _return)> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)>  exn_cob, const std::string& keyspace, const std::string& column_family, const std::string& primary_key, const std::vector<std::string> & col_names){
+        thlogger.debug("call execute_select_by_primary_key, keyspace:{},column_family:{},primary_key:{}", keyspace,
+                       column_family, primary_key);
+        with_exn_cob(std::move(exn_cob), [&] {
+            schema_ptr schemaPtr = this->_db.local().find_schema(keyspace, column_family);
+            token tk = get_token(*schemaPtr, partition_key::from_single_value(*schemaPtr, to_bytes(primary_key)));
+            unsigned shard_id = dht::shard_of(*schemaPtr, tk); //compute the `shard` the pk belongs to
+
+            return _db.invoke_on(shard_id, [keyspace, column_family, primary_key, cob = std::move(cob),col_names](database &db) {
+                schema_ptr s = db.find_schema(keyspace, column_family);
+                dht::decorated_key dk = dht::decorate_key(*s, std::move(
+                        partition_key::from_single_value(*s, to_bytes(primary_key))));
+                dht::partition_range pr = dht::partition_range::make_singular(dk);
+                dht::partition_range_vector pranges;
+                pranges.emplace_back(pr);
+
+                partition_slice_builder builder=partition_slice_builder(*s);
+                for(auto& col:col_names){
+                    builder.with_regular_column(serialized(col));
+                }
+//                builder.with_range(query::clustering_range::make_singular(clustering_key::from_single_value(*s, serialized("name10")))); // todo used by table with clustering key
+                builder.without_partition_key_columns();
+                builder.without_clustering_key_columns();
+
+                auto cmd = query::read_command(s->id(), s->version(), builder.build(),
+                                               query::max_result_size(std::numeric_limits<size_t>::max()));
+                return do_with(std::move(cmd), std::move(pranges), std::move(cob),
+                   [&db, s](auto &cmd, auto &pranges, auto &cob) {
+                       return db.query(s, cmd, query::result_options::only_result(), pranges, nullptr,
+                                       db::no_timeout)
+                       .then([&cob, &cmd, s](std::tuple<lw_shared_ptr < query::result>,
+                                             cache_temperature > res_temp)
+                         {
+                             auto&&[res, temp] = res_temp;
+                             query::result_set rs = query::result_set::from_raw_result(s, cmd.slice, *res);
+                             cassandra::SelectResult selectResult;
+                             parse_result_set(s,rs,selectResult);
+                             cob(selectResult);// return select result
+                         });
+                   });
+            });
+        });
+    }
+
     void get_range_slices_locally(::std::function<void(SelectResult const& _return)> cob, ::std::function<void(::apache::thrift::TDelayedException* _throw)> exn_cob , const std::string& keyspace, const std::string& column_family, const std::string& start_tk, const std::string& end_tk){
         with_exn_cob(std::move(exn_cob), [&] {
             schema_ptr schemaPtr = this->_db.local().find_schema(keyspace, column_family);
