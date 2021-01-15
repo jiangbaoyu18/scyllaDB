@@ -70,8 +70,6 @@ future<> thrift_controller::do_start_server() {
             //});
             return tserver->invoke_on_all(&thrift_server::listen, socket_address{ip, port}, keepalive);
         });
-    }).then([addr, port] {
-        clogger.info("Thrift server listening on {}:{} ...", addr, port);
     });
 }
 

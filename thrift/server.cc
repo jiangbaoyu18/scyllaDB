@@ -226,7 +226,7 @@ thrift_server::listen(socket_address addr, bool keepalive) {
         lo.reuse_address = true;
         socket_address address{addr.addr(),static_cast<uint16_t>(addr.port()+i)};
         if(this_shard_id()==0){
-            std::cout<<"thrift server open on shard: "<<this_shard_id()<< " ip: "<<address.addr()<<" port:"<<address.port()<<std::endl;
+            tlogger.info("thrift server open on ip{}: port{} ",address.addr(),address.port());
         }
         _listeners.push_back(seastar::listen(address, lo));
         do_accepts(_listeners.size() - 1, keepalive);
