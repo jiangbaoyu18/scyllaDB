@@ -72,7 +72,8 @@ thrift_server::thrift_server(distributed<database>& db,
         , _handler_factory(create_handler_factory(db, qp, auth_service, config.timeout_config).release())
         , _protocol_factory(new TBinaryProtocolFactoryT<TMemoryBuffer>())
         , _processor_factory(new CassandraAsyncProcessorFactory(_handler_factory))
-        , _config(config) {
+        , _config(config)
+        ,_listening_port_count(config.listening_port_count){
 }
 
 thrift_server::~thrift_server() {
@@ -219,12 +220,18 @@ thrift_server::connection::shutdown() {
 
 future<>
 thrift_server::listen(socket_address addr, bool keepalive) {
-    listen_options lo;
-    lo.reuse_address = true;
-    _listeners.push_back(seastar::listen(addr, lo));
-    do_accepts(_listeners.size() - 1, keepalive);
-//    std::cout<<"thrift server open on "<<this_shard_id()<<std::endl;
-    return make_ready_future<>();
+
+    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(_listening_port_count),[this,addr,keepalive](size_t i){
+        listen_options lo;
+        lo.reuse_address = true;
+        socket_address address{addr.addr(),static_cast<uint16_t>(addr.port()+i)};
+        if(this_shard_id()==0){
+            std::cout<<"thrift server open on shard: "<<this_shard_id()<< " ip: "<<address.addr()<<" port:"<<address.port()<<std::endl;
+        }
+        _listeners.push_back(seastar::listen(address, lo));
+        do_accepts(_listeners.size() - 1, keepalive);
+        return make_ready_future<>();
+    });
 }
 
 void
@@ -325,7 +332,7 @@ thrift_stats::thrift_stats(thrift_server& server) {
 
 namespace thrift{
 thrift_client::thrift_client() {
-    _socket=std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", 9161);
+    _socket=std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", 9171);
     _transport=std::make_shared<apache::thrift::transport::TFramedTransport>(_socket);
     _protocol=std::make_shared<apache::thrift::protocol::TBinaryProtocol>(_transport);
     _client=std::make_unique<cassandra::CassandraClient>(_protocol);
@@ -352,6 +359,9 @@ void thrift_client::dealWithIndexInfo(const std::string& index_info_json){
 }
 void thrift_client::postScyllaInitialization(){
     _client->postScyllaInitialization();
+}
+void thrift_client::flush(const std::string& ks_name, const std::string cf_name){
+    _client->flush(ks_name,cf_name);
 }
 
 future<> thrift_client::stop() {

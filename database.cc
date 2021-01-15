@@ -92,6 +92,7 @@
 #include <seastar/core/shared_ptr_incomplete.hh>
 
 #include "schema_builder.hh"
+#include "thrift/server.hh"
 
 using namespace std::chrono_literals;
 using namespace db;
@@ -1447,6 +1448,16 @@ future<flush_permit> flush_permit::reacquire_sstable_write_permit() && {
 }
 
 future<> dirty_memory_manager::flush_one(memtable_list& mtlist, flush_permit&& permit) {
+    schema_ptr s=mtlist.back()->schema();
+    std::cout<<"flushing : ks:"<<s->ks_name()<<" cf:"<<s->cf_name()<<" shard id: "<<this_shard_id<<std::endl;
+    sstring index_info=s->comment();
+    rjson::document  doc;
+    if(!doc.Parse(index_info.c_str()).HasParseError()) {
+        if (doc.HasMember("use_mpp_index") && doc["use_mpp_index"].IsString() &&
+            strcmp(doc["use_mpp_index"].GetString(), "true") == 0) {
+            thrift::get_local_thrift_client().flush(s->ks_name(), s->cf_name());
+        }
+    }
     return mtlist.seal_active_memtable_immediate(std::move(permit)).handle_exception([this, schema = mtlist.back()->schema()] (std::exception_ptr ep) {
         dblog.error("Failed to flush memtable, {}:{} - {}", schema->ks_name(), schema->cf_name(), ep);
         return make_exception_future<>(ep);

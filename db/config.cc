@@ -608,6 +608,8 @@ db::config::config(std::shared_ptr<db::extensions> exts)
         "The maximum length of a Thrift message in megabytes, including all fields and internal Thrift overhead (1 byte of overhead for each frame). Message length is usually used in conjunction with batches. A frame length greater than or equal to 24 accommodates a batch with four inserts, each of which is 24 bytes. The required message length is greater than or equal to 24+24+24+24+4 (number of frames).")
     /* Security properties */
     /* Server and client security settings. */
+    ,thrift_server_listening_port_count(this,"thrift_server_listening_port_count","thrift_server_listening_port_count",value_status::Used,3,
+      "number of ports thrift server used")
     , authenticator(this, "authenticator", value_status::Used, "org.apache.cassandra.auth.AllowAllAuthenticator",
         "The authentication backend, used to identify users. The available authenticators are:\n"
         "\n"

@@ -2220,6 +2220,7 @@ private:
     void is_alive(::std::function<void(bool const& _return)> cob, const std::string& addr){
         cob(gms::get_gossiper().local().is_alive(gms::inet_address(addr)));
     }
+    void flush(::std::function<void()> cob, const std::string& ksName, const std::string& cfName){}
 
 };
 

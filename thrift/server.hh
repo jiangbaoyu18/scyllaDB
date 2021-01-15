@@ -79,6 +79,8 @@ class service;
 struct thrift_server_config {
     ::timeout_config timeout_config;
     uint64_t max_request_size;
+    unsigned listening_port_count;
+
 };
 
 class thrift_server {
@@ -117,6 +119,7 @@ private:
     uint64_t _current_connections = 0;
     uint64_t _requests_served = 0;
     thrift_server_config _config;
+    unsigned _listening_port_count;   // the number of port this thrift server use
     boost::intrusive::list<connection> _connections_list;
     seastar::gate _stop_gate;
 public:
@@ -150,6 +153,7 @@ public:
     void dealWithIndexedFields(cassandra::WriteRow& indexed_fields);
     void dealWithIndexInfo(const std::string& index_info_json);
     void postScyllaInitialization();
+    void flush(const std::string& ks_name, const std::string cf_name);
 
 };
 

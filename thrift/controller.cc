@@ -57,7 +57,9 @@ future<> thrift_controller::do_start_server() {
     auto preferred = cfg.rpc_interface_prefer_ipv6() ? std::make_optional(net::inet_address::family::INET6) : std::nullopt;
     auto family = cfg.enable_ipv6_dns_lookup() || preferred ? std::nullopt : std::make_optional(net::inet_address::family::INET);
     auto keepalive = cfg.rpc_keepalive();
+    auto thrift_server_listening_port_count=cfg.thrift_server_listening_port_count();
     thrift_server_config tsc;
+    tsc.listening_port_count=thrift_server_listening_port_count;
     tsc.timeout_config = make_timeout_config(cfg);
     tsc.max_request_size = cfg.thrift_max_message_length_in_mb() * (uint64_t(1) << 20);
     return gms::inet_address::lookup(addr, family, preferred).then([this, tserver, addr, port, keepalive, tsc] (gms::inet_address ip) {
@@ -71,13 +73,6 @@ future<> thrift_controller::do_start_server() {
     }).then([addr, port] {
         clogger.info("Thrift server listening on {}:{} ...", addr, port);
     });
-//    .then([]{
-//        return thrift::get_thrift_client().start().then([](){
-//            return thrift::get_thrift_client().invoke_on_all(&thrift::thrift_client::listen).then([]{
-//                clogger.info("Thrift client listening on {}:{} ...", "127.0.0.1", 9161);
-//            });
-//        });
-//    });
 }
 
 future<> thrift_controller::stop() {

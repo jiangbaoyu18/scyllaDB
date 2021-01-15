@@ -1087,4 +1087,9 @@ service Cassandra {
     **/
     bool is_alive(1:required string addr)
 
+    /**
+     * when scylla'table flush , notify SE to flush
+     **/
+    void flush(1:required string ksName, 2:required string cfName)
+
 }
