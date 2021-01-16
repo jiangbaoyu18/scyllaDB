@@ -540,7 +540,7 @@ db::config::config(std::shared_ptr<db::extensions> exts)
     /* Settings for configuring and tuning client connections. */
     , broadcast_rpc_address(this, "broadcast_rpc_address", value_status::Used, {/* unset */},
         "RPC address to broadcast to drivers and other Scylla nodes. This cannot be set to 0.0.0.0. If blank, it is set to the value of the rpc_address or rpc_interface. If rpc_address or rpc_interfaceis set to 0.0.0.0, this property must be set.\n")
-    , rpc_port(this, "rpc_port", "thrift_port", value_status::Used, 9160,
+    , rpc_port(this, "rpc_port", "thrift_port", value_status::Used, 29160,
         "Thrift port for client connections.")
     , start_rpc(this, "start_rpc", value_status::Used, true,
         "Starts the Thrift RPC server")
@@ -608,8 +608,10 @@ db::config::config(std::shared_ptr<db::extensions> exts)
         "The maximum length of a Thrift message in megabytes, including all fields and internal Thrift overhead (1 byte of overhead for each frame). Message length is usually used in conjunction with batches. A frame length greater than or equal to 24 accommodates a batch with four inserts, each of which is 24 bytes. The required message length is greater than or equal to 24+24+24+24+4 (number of frames).")
     /* Security properties */
     /* Server and client security settings. */
-    ,thrift_server_listening_port_count(this,"thrift_server_listening_port_count","thrift_server_listening_port_count",value_status::Used,3,
-      "number of ports thrift server used")
+
+    ,se_rpc_port(this,"se_rpc_port","se_rpc_port",value_status::Used,39160,
+                                            "thrift port for SE Thrift  server to listen for clients on")
+
     , authenticator(this, "authenticator", value_status::Used, "org.apache.cassandra.auth.AllowAllAuthenticator",
         "The authentication backend, used to identify users. The available authenticators are:\n"
         "\n"

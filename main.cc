@@ -926,10 +926,8 @@ int main(int ac, char** av) {
             });
 
             // before init_non_system_keyspaces, init our thrift client and make ready for send data to SE
-            thrift::get_thrift_client().start().then([](){
-                return thrift::get_thrift_client().invoke_on_all(&thrift::thrift_client::listen).then([]{
-                    startlog.info("Thrift client listening on {}:{} ...", "127.0.0.1", 9161);
-                 });
+            thrift::get_thrift_client().start(std::ref(db)).then([](){
+                return thrift::get_thrift_client().invoke_on_all(&thrift::thrift_client::listen);
             }).get0();
 
             supervisor::notify("loading non-system sstables");
@@ -1325,7 +1323,6 @@ int main(int ac, char** av) {
             seastar::set_abort_on_ebadf(cfg->abort_on_ebadf());
             api::set_server_done(ctx).get();
             supervisor::notify("serving");
-            thrift::get_local_thrift_client().postScyllaInitialization();// notify SE Server ,syclla finish initializaion
             // Register at_exit last, so that storage_service::drain_on_shutdown will be called first
 
             auto stop_repair = defer_verbose_shutdown("repair", [] {

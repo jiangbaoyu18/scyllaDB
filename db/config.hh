@@ -245,7 +245,10 @@ public:
     named_value<string_map> request_scheduler_options;
     named_value<uint32_t> thrift_framed_transport_size_in_mb;
     named_value<uint32_t> thrift_max_message_length_in_mb;
-    named_value<uint16_t> thrift_server_listening_port_count;
+
+    // our mpp config options
+    named_value<uint16_t> se_rpc_port;
+
     named_value<sstring> authenticator;
     named_value<sstring> internode_authenticator;
     named_value<sstring> authorizer;

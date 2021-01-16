@@ -206,10 +206,11 @@ rpc_address: localhost
 # rpc_interface: eth1
 # rpc_interface_prefer_ipv6: false
 
-# port for Thrift to listen for clients on
-rpc_port: 9160
-# our mpp config options: number of port thrift server use  eg: `thrift_server_listening_port_count=4` and `rpc_port= 9160` ,the scylla thrift server will use ports: 9160, 9161,9162,9163
-thrift_server_listening_port_count: 4
+# start port for Scylla Thrift server to listen for clients on.  eg: scylla available cup cores is 4, and `rpc_port= 29160` ,the scylla thrift server will use ports: 29160, 29161,29162,29163 (four continuous ports)  (should same as the option 'thrift.client.rpc.start_port' in se.yaml)
+rpc_port: 29160
+# start port for SE Thrift  server to listen for clients on , eg: scylla available cup cores is 4, and `se_rpc_port= 39160` ,the scylla thrift client will use ports: 39160, 39161,39162,39163 (four continuous ports) to communicate with SE's thrife client    (should same as the option 'thrift.server.rpc.start_port' in se.yaml)
+se_rpc_port: 39160
+
 
 # port for REST API server
 api_port: 10000

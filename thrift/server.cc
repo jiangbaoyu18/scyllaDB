@@ -42,6 +42,8 @@
 #include <limits>
 #include <cctype>
 #include <vector>
+#include "database.hh"
+#include "db/config.hh"
 
 
 #ifdef THRIFT_USES_BOOST
@@ -72,8 +74,7 @@ thrift_server::thrift_server(distributed<database>& db,
         , _handler_factory(create_handler_factory(db, qp, auth_service, config.timeout_config).release())
         , _protocol_factory(new TBinaryProtocolFactoryT<TMemoryBuffer>())
         , _processor_factory(new CassandraAsyncProcessorFactory(_handler_factory))
-        , _config(config)
-        ,_listening_port_count(config.listening_port_count){
+        , _config(config){
 }
 
 thrift_server::~thrift_server() {
@@ -221,7 +222,7 @@ thrift_server::connection::shutdown() {
 future<>
 thrift_server::listen(socket_address addr, bool keepalive) {
 
-    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(_listening_port_count),[this,addr,keepalive](size_t i){
+    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(smp::count),[this,addr,keepalive](size_t i){
         listen_options lo;
         lo.reuse_address = true;
         socket_address address{addr.addr(),static_cast<uint16_t>(addr.port()+i)};
@@ -331,16 +332,24 @@ thrift_stats::thrift_stats(thrift_server& server) {
 }
 
 namespace thrift{
-thrift_client::thrift_client() {
-    _socket=std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", 9171);
-    _transport=std::make_shared<apache::thrift::transport::TFramedTransport>(_socket);
-    _protocol=std::make_shared<apache::thrift::protocol::TBinaryProtocol>(_transport);
-    _client=std::make_unique<cassandra::CassandraClient>(_protocol);
-}
+thrift_client::thrift_client(distributed<database>& db):_db(db){}
 future<> thrift_client::listen() {
-    _transport->open();
-//    std::cout<<"thrift client open on "<<seastar::engine().cpu_id()<<std::endl;
-    return make_ready_future<>();
+    auto se_rpc_port=_db.local().get_config().se_rpc_port();
+    auto thrift_client_count=smp::count;
+
+    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(thrift_client_count),[this,se_rpc_port](size_t i){
+        auto _transport=std::make_shared<apache::thrift::transport::TFramedTransport>(std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", se_rpc_port+i));
+        _transports.push_back(_transport);
+        auto _protocol=std::make_shared<apache::thrift::protocol::TBinaryProtocol>(_transport);
+        _clients.push_back(std::make_shared<cassandra::CassandraClient>(_protocol));
+    }).then([this,thrift_client_count,se_rpc_port](){
+       return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(thrift_client_count),[this,se_rpc_port](size_t i){
+           _transports[i]->open();
+           if(this_shard_id()==0){
+               tlogger.info("thrift client connect to ip 127.0.0.1: port{} ",se_rpc_port+i);
+           }
+       });
+    });
 }
 void thrift_client::dealWithIndexedFields(cassandra::WriteRow& indexed_fields){
     bool has_indexed_fields=false;
@@ -351,22 +360,23 @@ void thrift_client::dealWithIndexedFields(cassandra::WriteRow& indexed_fields){
         }
     }
     if(has_indexed_fields){
-        _client->dealWithIndexedFields(indexed_fields);
+        _clients[this_shard_id()]->dealWithIndexedFields(indexed_fields);
     }
 }
 void thrift_client::dealWithIndexInfo(const std::string& index_info_json){
-    _client->dealWithIndexInfo(index_info_json);
+    _clients[this_shard_id()]->dealWithIndexInfo(index_info_json);
 }
 void thrift_client::postScyllaInitialization(){
-    _client->postScyllaInitialization();
+    _clients[this_shard_id()]->postScyllaInitialization();
 }
 void thrift_client::flush(const std::string& ks_name, const std::string cf_name){
-    _client->flush(ks_name,cf_name);
+    _clients[this_shard_id()]->flush(ks_name,cf_name);
 }
 
 future<> thrift_client::stop() {
-    _transport->close();
-    return make_ready_future<>();
+    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(_transports.size()),[this](size_t i){
+        _transports[i]->close();
+    });
 }
 
 distributed<thrift_client> _the_thrift_client;

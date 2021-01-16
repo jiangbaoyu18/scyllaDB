@@ -79,7 +79,6 @@ class service;
 struct thrift_server_config {
     ::timeout_config timeout_config;
     uint64_t max_request_size;
-    unsigned listening_port_count;
 
 };
 
@@ -119,7 +118,6 @@ private:
     uint64_t _current_connections = 0;
     uint64_t _requests_served = 0;
     thrift_server_config _config;
-    unsigned _listening_port_count;   // the number of port this thrift server use
     boost::intrusive::list<connection> _connections_list;
     seastar::gate _stop_gate;
 public:
@@ -142,12 +140,11 @@ namespace thrift{
 class thrift_client{
 
 private:
-    std::shared_ptr<apache::thrift::transport::TTransport> _socket;
-    std::shared_ptr<apache::thrift::transport::TFramedTransport> _transport;
-    std::shared_ptr<apache::thrift::protocol::TProtocol> _protocol;
-    std::unique_ptr<cassandra::CassandraClient> _client;
+    distributed<database>& _db;
+    std::vector<std::shared_ptr<cassandra::CassandraClient>> _clients;
+    std::vector<std::shared_ptr<apache::thrift::transport::TFramedTransport>> _transports;
 public:
-    thrift_client();
+    thrift_client(distributed<database>& db);
     future<> listen();
     future<> stop();
     void dealWithIndexedFields(cassandra::WriteRow& indexed_fields);
