@@ -2010,7 +2010,6 @@ private:
             schema_ptr schemaPtr = this->_db.local().find_schema(keyspace, column_family);
             token tk = get_token(*schemaPtr, partition_key::from_single_value(*schemaPtr, to_bytes(primary_key)));
             unsigned shard_id = dht::shard_of(*schemaPtr, tk); //compute the `shard` the pk belongs to
-
             return _db.invoke_on(shard_id, [keyspace, column_family, primary_key, cob = std::move(cob)](database &db) {
                 schema_ptr s = db.find_schema(keyspace, column_family);
                 dht::decorated_key dk = dht::decorate_key(*s, std::move(
