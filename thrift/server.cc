@@ -366,9 +366,12 @@ void thrift_client::dealWithIndexedFields(cassandra::WriteRow& indexed_fields){
 void thrift_client::dealWithIndexInfo(const std::string& index_info_json){
     _clients[this_shard_id()]->dealWithIndexInfo(index_info_json);
 }
-void thrift_client::postScyllaInitialization(){
+future<> thrift_client::postScyllaInitialization(){
     _clients[this_shard_id()]->postScyllaInitialization();
+    return make_ready_future<>();
 }
+
+
 void thrift_client::flush(const std::string& ks_name, const std::string cf_name){
     _clients[this_shard_id()]->flush(ks_name,cf_name);
 }

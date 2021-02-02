@@ -1322,6 +1322,8 @@ int main(int ac, char** av) {
 
             seastar::set_abort_on_ebadf(cfg->abort_on_ebadf());
             api::set_server_done(ctx).get();
+
+            thrift::get_thrift_client().invoke_on(0,&thrift::thrift_client::postScyllaInitialization).get();
             supervisor::notify("serving");
             // Register at_exit last, so that storage_service::drain_on_shutdown will be called first
 

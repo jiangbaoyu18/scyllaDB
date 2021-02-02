@@ -149,7 +149,7 @@ public:
     future<> stop();
     void dealWithIndexedFields(cassandra::WriteRow& indexed_fields);
     void dealWithIndexInfo(const std::string& index_info_json);
-    void postScyllaInitialization();
+    future<> postScyllaInitialization();
     void flush(const std::string& ks_name, const std::string cf_name);
 
 };
