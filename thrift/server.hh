@@ -141,8 +141,8 @@ class thrift_client{
 
 private:
     distributed<database>& _db;
-    std::vector<std::shared_ptr<cassandra::CassandraClient>> _clients;
-    std::vector<std::shared_ptr<apache::thrift::transport::TFramedTransport>> _transports;
+    std::shared_ptr<cassandra::CassandraClient> _client;
+    std::shared_ptr<apache::thrift::transport::TFramedTransport> _transport;
 public:
     thrift_client(distributed<database>& db);
     future<> listen();

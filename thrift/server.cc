@@ -225,9 +225,10 @@ thrift_server::listen(socket_address addr, bool keepalive) {
     return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(smp::count),[this,addr,keepalive](size_t i){
         listen_options lo;
         lo.reuse_address = true;
-        socket_address address{addr.addr(),static_cast<uint16_t>(addr.port()+i)};
+//        socket_address address{addr.addr(),static_cast<uint16_t>(addr.port()+i)};
+        socket_address address{gms::inet_address("127.0.0.1"),static_cast<uint16_t>(addr.port()+i)};
         if(this_shard_id()==0){
-            tlogger.info("thrift server open on ip{}: port{} ",address.addr(),address.port());
+            tlogger.info("shard id:{}:thrift server open on ip{}: port{} ",this_shard_id(),address.addr(),address.port());
         }
         _listeners.push_back(seastar::listen(address, lo));
         do_accepts(_listeners.size() - 1, keepalive);
@@ -335,21 +336,12 @@ namespace thrift{
 thrift_client::thrift_client(distributed<database>& db):_db(db){}
 future<> thrift_client::listen() {
     auto se_rpc_port=_db.local().get_config().se_rpc_port();
-    auto thrift_client_count=smp::count;
-
-    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(thrift_client_count),[this,se_rpc_port](size_t i){
-        auto _transport=std::make_shared<apache::thrift::transport::TFramedTransport>(std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", se_rpc_port+i));
-        _transports.push_back(_transport);
-        auto _protocol=std::make_shared<apache::thrift::protocol::TBinaryProtocol>(_transport);
-        _clients.push_back(std::make_shared<cassandra::CassandraClient>(_protocol));
-    }).then([this,thrift_client_count,se_rpc_port](){
-       return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(thrift_client_count),[this,se_rpc_port](size_t i){
-           _transports[i]->open();
-           if(this_shard_id()==0){
-               tlogger.info("thrift client connect to ip 127.0.0.1: port{} ",se_rpc_port+i);
-           }
-       });
-    });
+    _transport=std::make_shared<apache::thrift::transport::TFramedTransport>(std::make_shared<apache::thrift::transport::TSocket>("127.0.0.1", se_rpc_port+this_shard_id()));
+    auto _protocol=std::make_shared<apache::thrift::protocol::TBinaryProtocol>(_transport);
+    _client=std::make_shared<cassandra::CassandraClient>(_protocol);
+    _transport->open();
+    tlogger.info("shard id:{},thrift client connect to ip 127.0.0.1: port{} ",this_shard_id(),se_rpc_port+this_shard_id());
+    return make_ready_future<>();
 }
 void thrift_client::dealWithIndexedFields(cassandra::WriteRow& indexed_fields){
     bool has_indexed_fields=false;
@@ -360,26 +352,25 @@ void thrift_client::dealWithIndexedFields(cassandra::WriteRow& indexed_fields){
         }
     }
     if(has_indexed_fields){
-        _clients[this_shard_id()]->dealWithIndexedFields(indexed_fields);
+        _client->dealWithIndexedFields(indexed_fields);
     }
 }
 void thrift_client::dealWithIndexInfo(const std::string& index_info_json){
-    _clients[this_shard_id()]->dealWithIndexInfo(index_info_json);
+    _client->dealWithIndexInfo(index_info_json);
 }
 future<> thrift_client::postScyllaInitialization(){
-    _clients[this_shard_id()]->postScyllaInitialization();
+    _client->postScyllaInitialization();
     return make_ready_future<>();
 }
 
 
 void thrift_client::flush(const std::string& ks_name, const std::string cf_name){
-    _clients[this_shard_id()]->flush(ks_name,cf_name);
+    _client->flush(ks_name,cf_name);
 }
 
 future<> thrift_client::stop() {
-    return do_for_each(boost::make_counting_iterator<size_t>(0),boost::make_counting_iterator<size_t>(_transports.size()),[this](size_t i){
-        _transports[i]->close();
-    });
+    _transport->close();
+    return make_ready_future<>();
 }
 
 distributed<thrift_client> _the_thrift_client;

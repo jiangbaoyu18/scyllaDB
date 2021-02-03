@@ -274,178 +274,178 @@ modes = {
 }
 
 scylla_tests = set([
-    'test/boost/UUID_test',
-    'test/boost/aggregate_fcts_test',
-    'test/boost/allocation_strategy_test',
-    'test/boost/alternator_base64_test',
-    'test/boost/anchorless_list_test',
-    'test/boost/auth_passwords_test',
-    'test/boost/auth_resource_test',
-    'test/boost/auth_test',
-    'test/boost/batchlog_manager_test',
-    'test/boost/big_decimal_test',
-    'test/boost/broken_sstable_test',
-    'test/boost/bytes_ostream_test',
-    'test/boost/cache_flat_mutation_reader_test',
-    'test/boost/cached_file_test',
-    'test/boost/caching_options_test',
-    'test/boost/canonical_mutation_test',
-    'test/boost/cartesian_product_test',
-    'test/boost/castas_fcts_test',
-    'test/boost/cdc_test',
-    'test/boost/cell_locker_test',
-    'test/boost/checksum_utils_test',
-    'test/boost/chunked_vector_test',
-    'test/boost/clustering_ranges_walker_test',
-    'test/boost/column_mapping_test',
-    'test/boost/commitlog_test',
-    'test/boost/compound_test',
-    'test/boost/compress_test',
-    'test/boost/config_test',
-    'test/boost/continuous_data_consumer_test',
-    'test/boost/counter_test',
-    'test/boost/cql_auth_query_test',
-    'test/boost/cql_auth_syntax_test',
-    'test/boost/cql_query_test',
-    'test/boost/cql_query_large_test',
-    'test/boost/cql_query_like_test',
-    'test/boost/cql_query_group_test',
-    'test/boost/cql_functions_test',
-    'test/boost/crc_test',
-    'test/boost/data_listeners_test',
-    'test/boost/database_test',
-    'test/boost/duration_test',
-    'test/boost/dynamic_bitset_test',
-    'test/boost/enum_option_test',
-    'test/boost/enum_set_test',
-    'test/boost/extensions_test',
-    'test/boost/error_injection_test',
-    'test/boost/filtering_test',
-    'test/boost/flat_mutation_reader_test',
-    'test/boost/flush_queue_test',
-    'test/boost/fragmented_temporary_buffer_test',
-    'test/boost/frozen_mutation_test',
-    'test/boost/gossip_test',
-    'test/boost/gossiping_property_file_snitch_test',
-    'test/boost/hash_test',
-    'test/boost/idl_test',
-    'test/boost/input_stream_test',
-    'test/boost/json_cql_query_test',
-    'test/boost/json_test',
-    'test/boost/keys_test',
-    'test/boost/large_paging_state_test',
-    'test/boost/like_matcher_test',
-    'test/boost/limiting_data_source_test',
-    'test/boost/linearizing_input_stream_test',
-    'test/boost/loading_cache_test',
-    'test/boost/log_heap_test',
-    'test/boost/estimated_histogram_test',
-    'test/boost/logalloc_test',
-    'test/boost/managed_vector_test',
-    'test/boost/intrusive_array_test',
-    'test/boost/map_difference_test',
-    'test/boost/memtable_test',
-    'test/boost/meta_test',
-    'test/boost/multishard_mutation_query_test',
-    'test/boost/murmur_hash_test',
-    'test/boost/mutation_fragment_test',
-    'test/boost/mutation_query_test',
-    'test/boost/mutation_reader_test',
-    'test/boost/multishard_combining_reader_as_mutation_source_test',
-    'test/boost/mutation_test',
-    'test/boost/mutation_writer_test',
-    'test/boost/mvcc_test',
-    'test/boost/network_topology_strategy_test',
-    'test/boost/nonwrapping_range_test',
-    'test/boost/observable_test',
-    'test/boost/partitioner_test',
-    'test/boost/querier_cache_test',
-    'test/boost/query_processor_test',
-    'test/boost/range_test',
-    'test/boost/range_tombstone_list_test',
-    'test/boost/reusable_buffer_test',
-    'test/boost/restrictions_test',
-    'test/boost/role_manager_test',
-    'test/boost/row_cache_test',
-    'test/boost/schema_change_test',
-    'test/boost/schema_registry_test',
-    'test/boost/secondary_index_test',
-    'test/boost/index_with_paging_test',
-    'test/boost/serialization_test',
-    'test/boost/serialized_action_test',
-    'test/boost/small_vector_test',
-    'test/boost/snitch_reset_test',
-    'test/boost/sstable_3_x_test',
-    'test/boost/sstable_datafile_test',
-    'test/boost/sstable_mutation_test',
-    'test/boost/schema_changes_test',
-    'test/boost/sstable_conforms_to_mutation_source_test',
-    'test/boost/sstable_resharding_test',
-    'test/boost/sstable_directory_test',
-    'test/boost/sstable_test',
-    'test/boost/storage_proxy_test',
-    'test/boost/top_k_test',
-    'test/boost/transport_test',
-    'test/boost/types_test',
-    'test/boost/user_function_test',
-    'test/boost/user_types_test',
-    'test/boost/utf8_test',
-    'test/boost/view_build_test',
-    'test/boost/view_complex_test',
-    'test/boost/view_schema_test',
-    'test/boost/view_schema_pkey_test',
-    'test/boost/view_schema_ckey_test',
-    'test/boost/vint_serialization_test',
-    'test/boost/virtual_reader_test',
-    'test/boost/bptree_test',
-    'test/boost/double_decker_test',
-    'test/boost/stall_free_test',
-    'test/boost/imr_test',
-    'test/manual/ec2_snitch_test',
-    'test/manual/enormous_table_scan_test',
-    'test/manual/gce_snitch_test',
-    'test/manual/gossip',
-    'test/manual/hint_test',
-    'test/manual/message',
-    'test/manual/partition_data_test',
-    'test/manual/row_locker_test',
-    'test/manual/streaming_histogram_test',
-    'test/manual/sstable_scan_footprint_test',
-    'test/perf/memory_footprint_test',
-    'test/perf/perf_cache_eviction',
-    'test/perf/perf_cql_parser',
-    'test/perf/perf_fast_forward',
-    'test/perf/perf_hash',
-    'test/perf/perf_mutation',
-    'test/perf/perf_bptree',
-    'test/perf/perf_row_cache_update',
-    'test/perf/perf_simple_query',
-    'test/perf/perf_sstable',
-    'test/unit/lsa_async_eviction_test',
-    'test/unit/lsa_sync_eviction_test',
-    'test/unit/row_cache_alloc_stress_test',
-    'test/unit/row_cache_stress_test',
-    'test/unit/bptree_stress_test',
-    'test/unit/bptree_compaction_test',
+    # 'test/boost/UUID_test',
+    # 'test/boost/aggregate_fcts_test',
+    # 'test/boost/allocation_strategy_test',
+    # 'test/boost/alternator_base64_test',
+    # 'test/boost/anchorless_list_test',
+    # 'test/boost/auth_passwords_test',
+    # 'test/boost/auth_resource_test',
+    # 'test/boost/auth_test',
+    # 'test/boost/batchlog_manager_test',
+    # 'test/boost/big_decimal_test',
+    # 'test/boost/broken_sstable_test',
+    # 'test/boost/bytes_ostream_test',
+    # 'test/boost/cache_flat_mutation_reader_test',
+    # 'test/boost/cached_file_test',
+    # 'test/boost/caching_options_test',
+    # 'test/boost/canonical_mutation_test',
+    # 'test/boost/cartesian_product_test',
+    # 'test/boost/castas_fcts_test',
+    # 'test/boost/cdc_test',
+    # 'test/boost/cell_locker_test',
+    # 'test/boost/checksum_utils_test',
+    # 'test/boost/chunked_vector_test',
+    # 'test/boost/clustering_ranges_walker_test',
+    # 'test/boost/column_mapping_test',
+    # 'test/boost/commitlog_test',
+    # 'test/boost/compound_test',
+    # 'test/boost/compress_test',
+    # 'test/boost/config_test',
+    # 'test/boost/continuous_data_consumer_test',
+    # 'test/boost/counter_test',
+    # 'test/boost/cql_auth_query_test',
+    # 'test/boost/cql_auth_syntax_test',
+    # 'test/boost/cql_query_test',
+    # 'test/boost/cql_query_large_test',
+    # 'test/boost/cql_query_like_test',
+    # 'test/boost/cql_query_group_test',
+    # 'test/boost/cql_functions_test',
+    # 'test/boost/crc_test',
+    # 'test/boost/data_listeners_test',
+    # 'test/boost/database_test',
+    # 'test/boost/duration_test',
+    # 'test/boost/dynamic_bitset_test',
+    # 'test/boost/enum_option_test',
+    # 'test/boost/enum_set_test',
+    # 'test/boost/extensions_test',
+    # 'test/boost/error_injection_test',
+    # 'test/boost/filtering_test',
+    # 'test/boost/flat_mutation_reader_test',
+    # 'test/boost/flush_queue_test',
+    # 'test/boost/fragmented_temporary_buffer_test',
+    # 'test/boost/frozen_mutation_test',
+    # 'test/boost/gossip_test',
+    # 'test/boost/gossiping_property_file_snitch_test',
+    # 'test/boost/hash_test',
+    # 'test/boost/idl_test',
+    # 'test/boost/input_stream_test',
+    # 'test/boost/json_cql_query_test',
+    # 'test/boost/json_test',
+    # 'test/boost/keys_test',
+    # 'test/boost/large_paging_state_test',
+    # 'test/boost/like_matcher_test',
+    # 'test/boost/limiting_data_source_test',
+    # 'test/boost/linearizing_input_stream_test',
+    # 'test/boost/loading_cache_test',
+    # 'test/boost/log_heap_test',
+    # 'test/boost/estimated_histogram_test',
+    # 'test/boost/logalloc_test',
+    # 'test/boost/managed_vector_test',
+    # 'test/boost/intrusive_array_test',
+    # 'test/boost/map_difference_test',
+    # 'test/boost/memtable_test',
+    # 'test/boost/meta_test',
+    # 'test/boost/multishard_mutation_query_test',
+    # 'test/boost/murmur_hash_test',
+    # 'test/boost/mutation_fragment_test',
+    # 'test/boost/mutation_query_test',
+    # 'test/boost/mutation_reader_test',
+    # 'test/boost/multishard_combining_reader_as_mutation_source_test',
+    # 'test/boost/mutation_test',
+    # 'test/boost/mutation_writer_test',
+    # 'test/boost/mvcc_test',
+    # 'test/boost/network_topology_strategy_test',
+    # 'test/boost/nonwrapping_range_test',
+    # 'test/boost/observable_test',
+    # 'test/boost/partitioner_test',
+    # 'test/boost/querier_cache_test',
+    # 'test/boost/query_processor_test',
+    # 'test/boost/range_test',
+    # 'test/boost/range_tombstone_list_test',
+    # 'test/boost/reusable_buffer_test',
+    # 'test/boost/restrictions_test',
+    # 'test/boost/role_manager_test',
+    # 'test/boost/row_cache_test',
+    # 'test/boost/schema_change_test',
+    # 'test/boost/schema_registry_test',
+    # 'test/boost/secondary_index_test',
+    # 'test/boost/index_with_paging_test',
+    # 'test/boost/serialization_test',
+    # 'test/boost/serialized_action_test',
+    # 'test/boost/small_vector_test',
+    # 'test/boost/snitch_reset_test',
+    # 'test/boost/sstable_3_x_test',
+    # 'test/boost/sstable_datafile_test',
+    # 'test/boost/sstable_mutation_test',
+    # 'test/boost/schema_changes_test',
+    # 'test/boost/sstable_conforms_to_mutation_source_test',
+    # 'test/boost/sstable_resharding_test',
+    # 'test/boost/sstable_directory_test',
+    # 'test/boost/sstable_test',
+    # 'test/boost/storage_proxy_test',
+    # 'test/boost/top_k_test',
+    # 'test/boost/transport_test',
+    # 'test/boost/types_test',
+    # 'test/boost/user_function_test',
+    # 'test/boost/user_types_test',
+    # 'test/boost/utf8_test',
+    # 'test/boost/view_build_test',
+    # 'test/boost/view_complex_test',
+    # 'test/boost/view_schema_test',
+    # 'test/boost/view_schema_pkey_test',
+    # 'test/boost/view_schema_ckey_test',
+    # 'test/boost/vint_serialization_test',
+    # 'test/boost/virtual_reader_test',
+    # 'test/boost/bptree_test',
+    # 'test/boost/double_decker_test',
+    # 'test/boost/stall_free_test',
+    # 'test/boost/imr_test',
+    # 'test/manual/ec2_snitch_test',
+    # 'test/manual/enormous_table_scan_test',
+    # 'test/manual/gce_snitch_test',
+    # 'test/manual/gossip',
+    # 'test/manual/hint_test',
+    # 'test/manual/message',
+    # 'test/manual/partition_data_test',
+    # 'test/manual/row_locker_test',
+    # 'test/manual/streaming_histogram_test',
+    # 'test/manual/sstable_scan_footprint_test',
+    # 'test/perf/memory_footprint_test',
+    # 'test/perf/perf_cache_eviction',
+    # 'test/perf/perf_cql_parser',
+    # 'test/perf/perf_fast_forward',
+    # 'test/perf/perf_hash',
+    # 'test/perf/perf_mutation',
+    # 'test/perf/perf_bptree',
+    # 'test/perf/perf_row_cache_update',
+    # 'test/perf/perf_simple_query',
+    # 'test/perf/perf_sstable',
+    # 'test/unit/lsa_async_eviction_test',
+    # 'test/unit/lsa_sync_eviction_test',
+    # 'test/unit/row_cache_alloc_stress_test',
+    # 'test/unit/row_cache_stress_test',
+    # 'test/unit/bptree_stress_test',
+    # 'test/unit/bptree_compaction_test',
 ])
 
 perf_tests = set([
-    'test/perf/perf_mutation_readers',
-    'test/perf/perf_checksum',
-    'test/perf/perf_mutation_fragment',
-    'test/perf/perf_idl',
-    'test/perf/perf_vint',
-    'test/perf/perf_big_decimal',
+    # 'test/perf/perf_mutation_readers',
+    # 'test/perf/perf_checksum',
+    # 'test/perf/perf_mutation_fragment',
+    # 'test/perf/perf_idl',
+    # 'test/perf/perf_vint',
+    # 'test/perf/perf_big_decimal',
 ])
 
 raft_tests = set([
-    'test/raft/replication_test',
-    'test/boost/raft_fsm_test',
+    # 'test/raft/replication_test',
+    # 'test/boost/raft_fsm_test',
 ])
 
 apps = set([
     'scylla',
-    'test/tools/cql_repl',
+    # 'test/tools/cql_repl',
     'tools/scylla-types',
 ])
 
@@ -956,23 +956,23 @@ idls = ['idl/gossip_digest.idl.hh',
 headers = find_headers('.', excluded_dirs=['idl', 'build', 'seastar', '.git'])
 
 scylla_tests_generic_dependencies = [
-    'test/lib/cql_test_env.cc',
-    'test/lib/test_services.cc',
-    'test/lib/log.cc',
-    'test/lib/reader_permit.cc',
-    'test/lib/test_utils.cc',
-    'test/lib/tmpdir.cc',
-    'test/lib/sstable_run_based_compaction_strategy_for_tests.cc',
+    # 'test/lib/cql_test_env.cc',
+    # 'test/lib/test_services.cc',
+    # 'test/lib/log.cc',
+    # 'test/lib/reader_permit.cc',
+    # 'test/lib/test_utils.cc',
+    # 'test/lib/tmpdir.cc',
+    # 'test/lib/sstable_run_based_compaction_strategy_for_tests.cc',
 ]
 
 scylla_tests_dependencies = scylla_core + idls + scylla_tests_generic_dependencies + [
-    'test/lib/cql_assertions.cc',
-    'test/lib/result_set_assertions.cc',
-    'test/lib/mutation_source_test.cc',
-    'test/lib/sstable_utils.cc',
-    'test/lib/data_model.cc',
-    'test/lib/exception_utils.cc',
-    'test/lib/random_schema.cc',
+    # 'test/lib/cql_assertions.cc',
+    # 'test/lib/result_set_assertions.cc',
+    # 'test/lib/mutation_source_test.cc',
+    # 'test/lib/sstable_utils.cc',
+    # 'test/lib/data_model.cc',
+    # 'test/lib/exception_utils.cc',
+    # 'test/lib/random_schema.cc',
 ]
 
 scylla_raft_dependencies = [
@@ -992,59 +992,59 @@ deps = {
 }
 
 pure_boost_tests = set([
-    'test/boost/anchorless_list_test',
-    'test/boost/auth_passwords_test',
-    'test/boost/auth_resource_test',
-    'test/boost/big_decimal_test',
-    'test/boost/caching_options_test',
-    'test/boost/cartesian_product_test',
-    'test/boost/checksum_utils_test',
-    'test/boost/chunked_vector_test',
-    'test/boost/compound_test',
-    'test/boost/compress_test',
-    'test/boost/cql_auth_syntax_test',
-    'test/boost/crc_test',
-    'test/boost/duration_test',
-    'test/boost/dynamic_bitset_test',
-    'test/boost/enum_option_test',
-    'test/boost/enum_set_test',
-    'test/boost/idl_test',
-    'test/boost/json_test',
-    'test/boost/keys_test',
-    'test/boost/like_matcher_test',
-    'test/boost/linearizing_input_stream_test',
-    'test/boost/map_difference_test',
-    'test/boost/meta_test',
-    'test/boost/nonwrapping_range_test',
-    'test/boost/observable_test',
-    'test/boost/range_test',
-    'test/boost/range_tombstone_list_test',
-    'test/boost/serialization_test',
-    'test/boost/small_vector_test',
-    'test/boost/top_k_test',
-    'test/boost/vint_serialization_test',
-    'test/boost/bptree_test',
-    'test/manual/streaming_histogram_test',
+    # 'test/boost/anchorless_list_test',
+    # 'test/boost/auth_passwords_test',
+    # 'test/boost/auth_resource_test',
+    # 'test/boost/big_decimal_test',
+    # 'test/boost/caching_options_test',
+    # 'test/boost/cartesian_product_test',
+    # 'test/boost/checksum_utils_test',
+    # 'test/boost/chunked_vector_test',
+    # 'test/boost/compound_test',
+    # 'test/boost/compress_test',
+    # 'test/boost/cql_auth_syntax_test',
+    # 'test/boost/crc_test',
+    # 'test/boost/duration_test',
+    # 'test/boost/dynamic_bitset_test',
+    # 'test/boost/enum_option_test',
+    # 'test/boost/enum_set_test',
+    # 'test/boost/idl_test',
+    # 'test/boost/json_test',
+    # 'test/boost/keys_test',
+    # 'test/boost/like_matcher_test',
+    # 'test/boost/linearizing_input_stream_test',
+    # 'test/boost/map_difference_test',
+    # 'test/boost/meta_test',
+    # 'test/boost/nonwrapping_range_test',
+    # 'test/boost/observable_test',
+    # 'test/boost/range_test',
+    # 'test/boost/range_tombstone_list_test',
+    # 'test/boost/serialization_test',
+    # 'test/boost/small_vector_test',
+    # 'test/boost/top_k_test',
+    # 'test/boost/vint_serialization_test',
+    # 'test/boost/bptree_test',
+    # 'test/manual/streaming_histogram_test',
 ])
 
 tests_not_using_seastar_test_framework = set([
-    'test/boost/alternator_base64_test',
-    'test/boost/small_vector_test',
-    'test/manual/gossip',
-    'test/manual/message',
-    'test/perf/memory_footprint_test',
-    'test/perf/perf_cache_eviction',
-    'test/perf/perf_cql_parser',
-    'test/perf/perf_hash',
-    'test/perf/perf_mutation',
-    'test/perf/perf_bptree',
-    'test/perf/perf_row_cache_update',
-    'test/unit/lsa_async_eviction_test',
-    'test/unit/lsa_sync_eviction_test',
-    'test/unit/row_cache_alloc_stress_test',
-    'test/unit/bptree_stress_test',
-    'test/unit/bptree_compaction_test',
-    'test/manual/sstable_scan_footprint_test',
+    # 'test/boost/alternator_base64_test',
+    # 'test/boost/small_vector_test',
+    # 'test/manual/gossip',
+    # 'test/manual/message',
+    # 'test/perf/memory_footprint_test',
+    # 'test/perf/perf_cache_eviction',
+    # 'test/perf/perf_cql_parser',
+    # 'test/perf/perf_hash',
+    # 'test/perf/perf_mutation',
+    # 'test/perf/perf_bptree',
+    # 'test/perf/perf_row_cache_update',
+    # 'test/unit/lsa_async_eviction_test',
+    # 'test/unit/lsa_sync_eviction_test',
+    # 'test/unit/row_cache_alloc_stress_test',
+    # 'test/unit/bptree_stress_test',
+    # 'test/unit/bptree_compaction_test',
+    # 'test/manual/sstable_scan_footprint_test',
 ]) | pure_boost_tests
 
 for t in tests_not_using_seastar_test_framework:
@@ -1059,55 +1059,55 @@ for t in scylla_tests:
         deps[t] += scylla_core + idls + scylla_tests_generic_dependencies
 
 perf_tests_seastar_deps = [
-    'seastar/tests/perf/perf_tests.cc'
+    # 'seastar/tests/perf/perf_tests.cc'
 ]
 
-for t in perf_tests:
-    deps[t] = [t + '.cc'] + scylla_tests_dependencies + perf_tests_seastar_deps
-
-deps['test/boost/sstable_test'] += ['test/lib/normalizing_reader.cc']
-deps['test/boost/sstable_datafile_test'] += ['test/lib/normalizing_reader.cc']
-deps['test/boost/mutation_reader_test'] += ['test/lib/dummy_sharder.cc' ]
-deps['test/boost/multishard_combining_reader_as_mutation_source_test'] += ['test/lib/dummy_sharder.cc' ]
-
-deps['test/boost/bytes_ostream_test'] = [
-    "test/boost/bytes_ostream_test.cc",
-    "utils/managed_bytes.cc",
-    "utils/logalloc.cc",
-    "utils/dynamic_bitset.cc",
-    "test/lib/log.cc",
-]
-deps['test/boost/input_stream_test'] = ['test/boost/input_stream_test.cc']
-deps['test/boost/UUID_test'] = ['utils/UUID_gen.cc', 'test/boost/UUID_test.cc', 'utils/uuid.cc', 'utils/managed_bytes.cc', 'utils/logalloc.cc', 'utils/dynamic_bitset.cc', 'hashers.cc']
-deps['test/boost/murmur_hash_test'] = ['bytes.cc', 'utils/murmur_hash.cc', 'test/boost/murmur_hash_test.cc']
-deps['test/boost/allocation_strategy_test'] = ['test/boost/allocation_strategy_test.cc', 'utils/logalloc.cc', 'utils/dynamic_bitset.cc']
-deps['test/boost/log_heap_test'] = ['test/boost/log_heap_test.cc']
-deps['test/boost/estimated_histogram_test'] = ['test/boost/estimated_histogram_test.cc']
-deps['test/boost/anchorless_list_test'] = ['test/boost/anchorless_list_test.cc']
-deps['test/perf/perf_fast_forward'] += ['release.cc']
-deps['test/perf/perf_simple_query'] += ['release.cc']
-deps['test/boost/meta_test'] = ['test/boost/meta_test.cc']
-deps['test/boost/imr_test'] = ['test/boost/imr_test.cc', 'utils/logalloc.cc', 'utils/dynamic_bitset.cc']
-deps['test/boost/reusable_buffer_test'] = [
-    "test/boost/reusable_buffer_test.cc",
-    "test/lib/log.cc",
-]
-deps['test/boost/utf8_test'] = ['utils/utf8.cc', 'test/boost/utf8_test.cc']
-deps['test/boost/small_vector_test'] = ['test/boost/small_vector_test.cc']
-deps['test/boost/multishard_mutation_query_test'] += ['test/boost/test_table.cc']
-deps['test/boost/vint_serialization_test'] = ['test/boost/vint_serialization_test.cc', 'vint-serialization.cc', 'bytes.cc']
-deps['test/boost/linearizing_input_stream_test'] = [
-    "test/boost/linearizing_input_stream_test.cc",
-    "test/lib/log.cc",
-]
-
-deps['test/boost/duration_test'] += ['test/lib/exception_utils.cc']
-deps['test/boost/alternator_base64_test'] += ['alternator/base64.cc']
-
-deps['test/raft/replication_test'] = ['test/raft/replication_test.cc'] + scylla_raft_dependencies
-deps['test/boost/raft_fsm_test'] =  ['test/boost/raft_fsm_test.cc', 'test/lib/log.cc'] + scylla_raft_dependencies
-
-deps['utils/gz/gen_crc_combine_table'] = ['utils/gz/gen_crc_combine_table.cc']
+# for t in perf_tests:
+#     deps[t] = [t + '.cc'] + scylla_tests_dependencies + perf_tests_seastar_deps
+#
+# deps['test/boost/sstable_test'] += ['test/lib/normalizing_reader.cc']
+# deps['test/boost/sstable_datafile_test'] += ['test/lib/normalizing_reader.cc']
+# deps['test/boost/mutation_reader_test'] += ['test/lib/dummy_sharder.cc' ]
+# deps['test/boost/multishard_combining_reader_as_mutation_source_test'] += ['test/lib/dummy_sharder.cc' ]
+#
+# deps['test/boost/bytes_ostream_test'] = [
+#     "test/boost/bytes_ostream_test.cc",
+#     "utils/managed_bytes.cc",
+#     "utils/logalloc.cc",
+#     "utils/dynamic_bitset.cc",
+#     "test/lib/log.cc",
+# ]
+# deps['test/boost/input_stream_test'] = ['test/boost/input_stream_test.cc']
+# deps['test/boost/UUID_test'] = ['utils/UUID_gen.cc', 'test/boost/UUID_test.cc', 'utils/uuid.cc', 'utils/managed_bytes.cc', 'utils/logalloc.cc', 'utils/dynamic_bitset.cc', 'hashers.cc']
+# deps['test/boost/murmur_hash_test'] = ['bytes.cc', 'utils/murmur_hash.cc', 'test/boost/murmur_hash_test.cc']
+# deps['test/boost/allocation_strategy_test'] = ['test/boost/allocation_strategy_test.cc', 'utils/logalloc.cc', 'utils/dynamic_bitset.cc']
+# deps['test/boost/log_heap_test'] = ['test/boost/log_heap_test.cc']
+# deps['test/boost/estimated_histogram_test'] = ['test/boost/estimated_histogram_test.cc']
+# deps['test/boost/anchorless_list_test'] = ['test/boost/anchorless_list_test.cc']
+# deps['test/perf/perf_fast_forward'] += ['release.cc']
+# deps['test/perf/perf_simple_query'] += ['release.cc']
+# deps['test/boost/meta_test'] = ['test/boost/meta_test.cc']
+# deps['test/boost/imr_test'] = ['test/boost/imr_test.cc', 'utils/logalloc.cc', 'utils/dynamic_bitset.cc']
+# deps['test/boost/reusable_buffer_test'] = [
+#     "test/boost/reusable_buffer_test.cc",
+#     "test/lib/log.cc",
+# ]
+# deps['test/boost/utf8_test'] = ['utils/utf8.cc', 'test/boost/utf8_test.cc']
+# deps['test/boost/small_vector_test'] = ['test/boost/small_vector_test.cc']
+# deps['test/boost/multishard_mutation_query_test'] += ['test/boost/test_table.cc']
+# deps['test/boost/vint_serialization_test'] = ['test/boost/vint_serialization_test.cc', 'vint-serialization.cc', 'bytes.cc']
+# deps['test/boost/linearizing_input_stream_test'] = [
+#     "test/boost/linearizing_input_stream_test.cc",
+#     "test/lib/log.cc",
+# ]
+#
+# deps['test/boost/duration_test'] += ['test/lib/exception_utils.cc']
+# deps['test/boost/alternator_base64_test'] += ['alternator/base64.cc']
+#
+# deps['test/raft/replication_test'] = ['test/raft/replication_test.cc'] + scylla_raft_dependencies
+# deps['test/boost/raft_fsm_test'] =  ['test/boost/raft_fsm_test.cc', 'test/lib/log.cc'] + scylla_raft_dependencies
+#
+# deps['utils/gz/gen_crc_combine_table'] = ['utils/gz/gen_crc_combine_table.cc']
 
 
 warnings = [
