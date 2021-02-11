@@ -230,6 +230,8 @@ bool secondary_index_manager::on_finished(const frozen_mutation& m, partition_en
     if(is_first_write){
         cassandra::WriteRow indexed_row;
         indexed_row.isFirstWrite=true;
+        indexed_row.ks_name=parsed_row.ks_name;
+        indexed_row.tbl_name=parsed_row.tbl_name;
         for(auto& column: parsed_row.columns){
             if(mpp_index_fields_info.contains(column.name)||column.column_type==1||column.column_type==2){// only send indexed fields and primary key to SE
                 indexed_row.columns.push_back(column);
@@ -270,6 +272,8 @@ secondary_index_manager::query_and_send(database& db,const frozen_mutation& m){
 
                thrift::thrift_client& client=thrift::get_local_thrift_client();
                cassandra::WriteRow indexed_row;
+               indexed_row.ks_name=schema->ks_name();
+               indexed_row.tbl_name=schema->cf_name();
                for(auto& column: selectResult.rows.front().columns){
                    if(mpp_index_fields_info.contains(column.name)||column.column_type==1||column.column_type==2){// only send indexed fields and primary key to SE
                        indexed_row.columns.push_back(column);

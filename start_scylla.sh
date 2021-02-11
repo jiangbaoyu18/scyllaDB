@@ -1,7 +1,7 @@
 #! /bin/bash                                                                                                                     
  
 server_name="scylla"
-server_path="/scylla/scylla/build/release/scylla --developer-mode=1  --options-file /scylla/scylla/conf/scylla.yaml -c 5 -m 16G"
+server_path="/scylla/scylla/build/debug/scylla --developer-mode=1  --options-file /scylla/scylla/conf/scylla.yaml -c 5 -m 10G"
  
  
 start(){
