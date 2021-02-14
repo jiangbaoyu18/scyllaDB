@@ -110,8 +110,10 @@ void secondary_index_manager::reload() {
                 size_t len=fields_info.Size();
                 for(size_t i = 0; i < len; i++){
                    const char* indexed=fields_info[i]["indexed"].GetString();
-                    std::string cass_name=fields_info[i]["cass_name"].GetString();
-                   if(strcmp(indexed,"true")==0){
+                   const char* docvalues=fields_info[i]["docvalues"].GetString();
+                   const char* updatable=fields_info[i]["updatable"].GetString();
+                   std::string cass_name=fields_info[i]["cass_name"].GetString();
+                   if(strcmp(indexed,"true")==0||(strcmp(docvalues,"true")==0&&strcmp(updatable,"true")==0)){// send indexed and dv fileds to SE
                        indexed_fields.emplace(std::move(cass_name),"true");
                    }
                 }
